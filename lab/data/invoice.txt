@@ -1,0 +1,9 @@
+SYNTHETIC DATA — safe for benchmarks, demos, and screenshots.
+No real secrets, keys, or PII anywhere in this file.
+
+Invoice #INV-2026-0042
+Bill to: Acme Labs (test account)
+Item: Widget Pro x 10 @ $19.00 = $190.00
+Item: Support plan (synthetic) = $49.00
+Total: $239.00
+Status: PAID (synthetic)
