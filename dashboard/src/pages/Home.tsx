@@ -1,144 +1,152 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { RiskMeter, SeverityBadge } from '../components/Severity';
 
-const TICKER = [
-  { t: 'session started', s: 'S-7b68fe6a', k: 'CLEAN' },
-  { t: 'edge added', s: 'read_file → store_file', k: 'CLEAN' },
-  { t: 'finding raised', s: 'secret_exfiltration · CRITICAL', k: 'CRITICAL' },
-  { t: 'action blocked', s: 'upload_file → external', k: 'CRITICAL' },
-  { t: 'approval granted', s: 'untrusted-to-privileged', k: 'HIGH' },
-] as const;
+const FEED = [
+  'S-7b68 · read_file → ALLOW',
+  'S-7b68 · store_file → ALLOW',
+  'S-7b68 · upload_file → BLOCK · secret_exfiltration',
+  'S-9f02 · search → ALLOW',
+];
 
-function Ticker() {
-  const [items, setItems] = useState<typeof TICKER[number][]>([...TICKER]);
+function LiveLine() {
+  const [i, setI] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setItems((p) => [...p.slice(1), p[0]]), 2200);
+    const id = setInterval(() => setI((v) => (v + 1) % FEED.length), 2400);
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="card mono" aria-label="live event ticker"
-      style={{ padding: 12, fontSize: 14, height: 132, overflow: 'hidden' }}>
-      {items.slice(0, 4).map((e, i) => (
-        <div key={i} style={{ opacity: 1 - i * 0.22, padding: '3px 0', color: 'var(--muted)' }}>
-          <span style={{ color: e.k === 'CRITICAL' ? 'var(--crit)' : e.k === 'HIGH' ? 'var(--high)' : 'var(--clean)' }}>●</span>
-          {' '}{e.t} <span style={{ color: 'var(--ink)' }}>{e.s}</span>
-        </div>
-      ))}
+    <div className="mono" aria-live="off" style={{ fontSize: 13, color: 'var(--faint)' }}>
+      <span style={{ color: 'var(--clean)' }}>● live</span>
+      <span style={{ marginLeft: 12 }}>{FEED[i]}</span>
     </div>
   );
 }
 
-const STAGES = [
-  ['Capture', 'Proxy records every tool call and output as events.'],
-  ['Graph', 'Events become a temporal attack graph per session.'],
+const STAGES: [string, string][] = [
+  ['Capture', 'Every tool call and output becomes a typed event.'],
+  ['Graph', 'Events link into one temporal graph per session.'],
   ['Analyze', 'Patterns, semantics, and capabilities score each path.'],
-  ['Score', 'Risk 0–100 with calibrated policy bands.'],
-  ['Approve / Block', 'Humans approve the ambiguous; attacks are blocked.'],
+  ['Score', 'Risk 0–100 against calibrated policy bands.'],
+  ['Decide', 'Ambiguous cases ask a human; attacks are blocked.'],
 ];
 
 function Proof() {
   const [d, setD] = useState<{ detection_rate: number; false_positive_rate: number; latency: { p95_s: number } } | null>(null);
   useEffect(() => { fetch('/data/benchmark.json').then((r) => r.json()).then(setD).catch(() => {}); }, []);
-  const cards = [
-    ['Detection rate', d ? `${Math.round(d.detection_rate * 100)}%` : '…', '8/8 targeted attacks'],
-    ['False positives', d ? `${Math.round(d.false_positive_rate * 100)}%` : '…', '0 of 9 benign flagged'],
+  const stats: [string, string, string][] = [
+    ['Detection', d ? `${Math.round(d.detection_rate * 100)}%` : '—', '8 of 8 targeted attacks'],
+    ['False positives', d ? `${Math.round(d.false_positive_rate * 100)}%` : '—', '0 of 9 benign flagged'],
     ['Cross-tool-only catches', '7', 'invisible to single-tool checks'],
-    ['Analyze p95', d ? `${Math.round(d.latency.p95_s * 1000)} ms` : '…', 'well inside 150 ms budget'],
+    ['Analyze p95', d ? `${Math.round(d.latency.p95_s * 1000)} ms` : '—', 'of a 150 ms budget'],
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
-      {cards.map(([k, v, sub]) => (
-        <div key={k} className="card" style={{ padding: 20 }}>
-          <div style={{ color: 'var(--muted)', fontSize: 14 }}>{k}</div>
-          <div className="mono" style={{ fontSize: 40, color: 'var(--accent)' }}>{v}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 14 }}>{sub}</div>
-        </div>
-      ))}
-      <Link to="/benchmark" style={{ color: 'var(--accent)' }}>Full benchmark →</Link>
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+        {stats.map(([k, v, sub], i) => (
+          <div key={k} style={{
+            padding: '28px 24px', borderLeft: i === 0 ? 'none' : '1px solid var(--line)',
+          }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)', letterSpacing: '0.04em' }}>{k}</div>
+            <div className="mono" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', margin: '4px 0' }}>{v}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--faint)' }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+      <Link to="/benchmark" style={{ fontSize: 14, color: 'var(--accent)', textDecoration: 'none' }}>Full benchmark →</Link>
     </div>
   );
 }
 
 export default function Home() {
   return (
-    <div style={{ display: 'grid', gap: 48 }}>
-      <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 24, alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: 52, lineHeight: 1.05, margin: '0 0 12px' }}>
-            Detect the attack path,<br />not just the sentence.
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 20, maxWidth: 560 }}>
-            VeriGraph watches agent tool sessions, builds the action/data-flow graph,
-            and blocks coordinated exfiltration that looks innocent one tool at a time.
-          </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-            <Link to="/graph" className="card"
-              style={{ padding: '12px 24px', textDecoration: 'none', color: 'var(--ink)', background: 'var(--accent)', border: 'none', fontWeight: 700 }}>
-              Open console
-            </Link>
-            <Link to="/demo" className="card"
-              style={{ padding: '12px 24px', textDecoration: 'none', color: 'var(--ink)' }}>
-              Run the demo
-            </Link>
-          </div>
+    <div>
+      <header style={{ padding: '88px 0 56px', maxWidth: 860 }}>
+        <span className="eyebrow">Runtime defense for tool-using agents</span>
+        <h1 style={{ margin: '20px 0 18px' }}>
+          Detect the attack path,<br />not just the sentence.
+        </h1>
+        <p className="sub" style={{ maxWidth: 620 }}>
+          VeriGraph watches agent tool sessions, links actions into a graph,
+          and blocks coordinated exfiltration that looks innocent one tool at a time.
+        </p>
+        <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+          <Link to="/graph" className="btn-primary" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
+          <Link to="/demo" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Run the demo</Link>
         </div>
-        <Ticker />
-      </section>
+        <div style={{ marginTop: 36, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+          <LiveLine />
+        </div>
+      </header>
 
-      <motion.section initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div className="card" style={{ padding: 20 }}>
-          <h3>Without VeriGraph</h3>
-          <p className="mono" style={{ color: 'var(--muted)' }}>read_file → ALLOW<br />store_file → ALLOW<br />upload_file → ALLOW</p>
-          <p style={{ color: 'var(--crit)' }}>Secret leaves. Nothing fires.</p>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderTop: '1px solid var(--line)' }}>
+        <div style={{ padding: '32px 32px 32px 0' }}>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>Without VeriGraph</div>
+          <p className="mono" style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 2 }}>
+            read_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
+            store_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
+            upload_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span>
+          </p>
+          <p style={{ marginTop: 12, color: 'var(--muted)', fontSize: 15 }}>The secret leaves. Nothing fires.</p>
         </div>
-        <motion.div className="card glow-crit" initial={{ x: 30, opacity: 0.4 }} whileInView={{ x: 0, opacity: 1 }}
-          viewport={{ once: true }} style={{ padding: 20 }}>
-          <h3>With VeriGraph</h3>
-          <p className="mono" style={{ color: 'var(--muted)' }}>read_file → ALLOW<br />store_file → ALLOW<br />upload_file → <b style={{ color: 'var(--crit)' }}>BLOCK</b></p>
-          <p><SeverityBadge level="CRITICAL" /> secret_exfiltration · risk <RiskMeter score={0.95} /></p>
-        </motion.div>
+        <div style={{ padding: '32px 0 32px 32px', borderLeft: '1px solid var(--line)' }}>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>With VeriGraph</div>
+          <p className="mono" style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 2 }}>
+            read_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
+            store_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
+            upload_file <span style={{ color: 'var(--crit)', fontWeight: 700 }}>→ BLOCK</span>
+          </p>
+          <p className="mono" style={{ marginTop: 12, fontSize: 13, color: 'var(--crit)' }}>
+            secret_exfiltration · CRITICAL · risk 95
+          </p>
+        </div>
       </motion.section>
 
-      <section>
-        <h2>Pipeline</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+      <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
+        <div className="eyebrow" style={{ marginBottom: 20 }}>Pipeline</div>
+        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 24 }}>
           {STAGES.map(([t, d], i) => (
-            <div key={t} className="card" style={{ padding: 16 }}>
-              <div className="mono" style={{ color: 'var(--accent)' }}>{i + 1}</div>
-              <strong>{t}</strong>
-              <p style={{ color: 'var(--muted)', fontSize: 14 }}>{d}</p>
-            </div>
+            <li key={t}>
+              <div className="mono" style={{ fontSize: 13, color: 'var(--accent)' }}>0{i + 1}</div>
+              <div style={{ fontWeight: 600, fontSize: 15, margin: '6px 0 4px' }}>{t}</div>
+              <div style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.55 }}>{d}</div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
-      <section>
-        <h2>Proof, not promises</h2>
+      <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Proof, not promises</div>
         <Proof />
       </section>
 
-      <section>
-        <h2>Architecture</h2>
-        <svg viewBox="0 0 900 190" role="img" aria-label="VeriGraph layered architecture"
-          className="card" style={{ width: '100%', padding: 12 }}>
+      <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
+        <div className="eyebrow" style={{ marginBottom: 20 }}>Architecture</div>
+        <svg viewBox="0 0 920 120" role="img" aria-label="VeriGraph layered architecture" style={{ width: '100%' }}>
           {['Agent', 'Proxy', 'Graph', 'Analyze', 'Policy'].map((l, i) => (
             <g key={l}>
-              <rect x={20 + i * 175} y={55} width={150} height={70} rx={8}
-                fill={i === 4 ? 'rgba(45,212,191,0.12)' : '#171c26'}
-                stroke={i === 4 ? '#2dd4bf' : 'rgba(255,255,255,0.15)'} />
-              <text x={95 + i * 175} y={95} textAnchor="middle" fill="#edf1f7" fontSize={16}>{l}</text>
-              {i < 4 && <text x={178 + i * 175} y={95} textAnchor="middle" fill="#9aa4b2" fontSize={20}>→</text>}
+              <text x={30 + i * 180} y={30} fill="#63636b" fontSize={12} fontFamily="monospace">0{i + 1}</text>
+              <text x={30 + i * 180} y={58} fill="#fafafa" fontSize={19} fontWeight={600}>{l}</text>
+              <text x={30 + i * 180} y={82} fill="#63636b" fontSize={12.5}>
+                {['plans + acts', 'events, gated', 'one graph/session', 'paths scored', 'allow → block'][i]}
+              </text>
+              {i < 4 && <text x={172 + i * 180} y={58} fill="#33333a" fontSize={18}>→</text>}
             </g>
           ))}
-          <text x={20} y={160} fill="#9aa4b2" fontSize={13}>events (hashes + labels, never raw secrets) flow left → right; verdicts gate the last hop</text>
         </svg>
+        <p className="mono" style={{ fontSize: 12.5, color: 'var(--faint)', marginTop: 8 }}>
+          events carry hashes + labels, never raw secrets · verdicts gate the last hop
+        </p>
       </section>
 
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, color: 'var(--muted)', fontSize: 14 }}>
-        VeriGraph — graph-based runtime defense for tool-using agents · <span className="mono">repo · docs · course project</span>
+      <footer style={{
+        borderTop: '1px solid var(--line)', padding: '28px 0 8px',
+        display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--faint)',
+      }}>
+        <span>VeriGraph — graph-based runtime defense for tool-using agents</span>
+        <span className="mono">repo · docs · course project</span>
       </footer>
     </div>
   );
