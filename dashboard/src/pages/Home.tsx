@@ -108,6 +108,46 @@ export default function Home() {
       </motion.section>
 
       <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
+        <div className="eyebrow" style={{ marginBottom: 20 }}>What we do</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 24 }}>
+          {[
+            ['Monitor', 'Every tool call and output becomes a typed event. Hashes and labels only, never raw secrets.'],
+            ['Model', 'Events link into one temporal graph per session. Provenance survives summarizers and reformatting.'],
+            ['Enforce', 'Patterns, semantics, and capabilities score each path. Risk maps to allow, monitor, approval, or block.'],
+          ].map(([t, d]) => (
+            <div key={t}>
+              <div style={{ fontWeight: 650, fontSize: 16, marginBottom: 6 }}>{t}</div>
+              <div style={{ fontSize: 14.5, color: 'var(--muted)', lineHeight: 1.6 }}>{d}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>What we catch</div>
+        <p className="sub" style={{ fontSize: 15, maxWidth: 640, marginBottom: 20 }}>
+          Ten coordinated attack classes, each dangerous precisely because its steps look innocent alone.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 0, borderTop: '1px solid var(--line)' }}>
+          {[
+            ['Cross-tool exfiltration', 'Read secret, stage it, upload it.'],
+            ['Distributed poisoning', 'One instruction split across three tools.'],
+            ['Capability escalation', 'Read plus write plus send becomes exfil.'],
+            ['Credential to network', 'Keys read, then transmitted.'],
+            ['Tool rug pull', 'Approved today, malicious tomorrow.'],
+            ['Context laundering', 'Malice washed through summarizers.'],
+            ['Shadow workflows', 'Extra compress, upload, email nobody asked for.'],
+            ['Multi-stage campaigns', 'Recon, collect, stage, exfiltrate.'],
+          ].map(([t, d]) => (
+            <div key={t} style={{ padding: '16px 20px 16px 0', borderBottom: '1px solid var(--line)' }}>
+              <div className="mono" style={{ fontSize: 13.5 }}>{t}</div>
+              <div style={{ fontSize: 13, color: 'var(--faint)', marginTop: 2 }}>{d}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
         <div className="eyebrow" style={{ marginBottom: 20 }}>Pipeline</div>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 24 }}>
           {STAGES.map(([t, d], i) => (
@@ -123,6 +163,17 @@ export default function Home() {
       <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>Proof, not promises</div>
         <Proof />
+      </section>
+
+      <section style={{
+        borderTop: '1px solid var(--line)', padding: '64px 0', textAlign: 'center',
+      }}>
+        <h2>See your agents the way an attacker does.</h2>
+        <p className="sub" style={{ fontSize: 16, marginTop: 8 }}>Three tool calls. Sixty seconds. One blocked exfiltration.</p>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center' }}>
+          <Link to="/demo" className="btn-primary" style={{ textDecoration: 'none', borderRadius: 8 }}>Run the demo</Link>
+          <Link to="/graph" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
+        </div>
       </section>
 
       <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
