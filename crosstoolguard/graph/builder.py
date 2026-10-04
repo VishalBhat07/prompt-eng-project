@@ -41,7 +41,8 @@ def _data_node(g: nx.DiGraph, event: Event, origin_tool: str) -> str:
     if nid not in g:
         g.add_node(nid, type=NodeType.DATA.value, session_id=event.session_id,
                    timestamp=event.timestamp.isoformat(),
-                   data_class=event.data_class.value, origin_tool=origin_tool)
+                   data_class=event.data_class.value, origin_tool=origin_tool,
+                   origin_capabilities=sorted(extract_capabilities(origin_tool, "")))
     return nid
 
 

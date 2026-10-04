@@ -1,0 +1,30 @@
+# Attack pattern library v1 (doc §29, adapted to lab capabilities).
+# Each pattern is an ORDERED stage list matched as a subsequence along a
+# directed path. Stage keys (all optional, at least one required):
+#   data_classification: DATA node class (SECRET | CREDENTIAL | PUBLIC)
+#   capability: TOOL (or origin-tool) capability; string or list (any-of)
+#   node: node type (INSTRUCTION, ...)
+#   trust: node trust level (HIGH | MED | LOW)
+# `query` selects candidate paths via find_paths (source/dest).
+patterns:
+  - name: secret_exfiltration
+    severity: CRITICAL
+    query: {source_class: SECRET, dest_cap: EXTERNAL_TRANSFER}
+    stages:
+      - {data_classification: SECRET}
+      - {capability: [STORE, TRANSFORM, DB_WRITE]}
+      - {capability: EXTERNAL_TRANSFER}
+
+  - name: poisoned_instruction_chain
+    severity: HIGH
+    query: {source_trust: LOW, dest_cap: PRIVILEGED}
+    stages:
+      - {node: INSTRUCTION, trust: LOW}
+      - {capability: PRIVILEGED}
+
+  - name: credential_to_network
+    severity: CRITICAL
+    query: {source_class: CREDENTIAL, dest_cap: NETWORK_SEND}
+    stages:
+      - {capability: CREDENTIAL_READ}
+      - {capability: NETWORK_SEND}

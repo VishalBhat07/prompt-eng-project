@@ -11,25 +11,37 @@ import networkx as nx
 from crosstoolguard.graph.nodes import NodeType
 
 
-def find_paths(graph: nx.DiGraph, *, source_class: str, dest_cap: str,
+def find_paths(graph: nx.DiGraph, *, source_class: str | None = None,
+               source_trust: str | None = None, dest_cap: str,
                cutoff: int = 8) -> list[list[str]]:
-    """All directed Data(source_class) → Tool(dest_cap)/Destination paths."""
-    sources = [n for n, d in graph.nodes(data=True)
-               if d.get("type") == NodeType.DATA.value and d.get("data_class") == source_class]
+    """Directed source → Tool(dest_cap)/Destination paths.
+
+    source_class selects DATA nodes (e.g. SECRET); source_trust selects
+    INSTRUCTION nodes (e.g. LOW). Exactly one source selector is required.
+    """
+    if (source_class is None) == (source_trust is None):
+        raise ValueError("pass exactly one of source_class / source_trust")
+    if source_class is not None:
+        sources = [n for n, d in graph.nodes(data=True)
+                   if d.get("type") == NodeType.DATA.value and d.get("data_class") == source_class]
+    else:
+        sources = [n for n, d in graph.nodes(data=True)
+                   if d.get("type") == NodeType.INSTRUCTION.value and d.get("trust") == source_trust]
     targets = [n for n, d in graph.nodes(data=True)
                if (d.get("type") == NodeType.TOOL.value and dest_cap in d.get("capabilities", []))
                or d.get("type") == NodeType.DESTINATION.value]
     paths: list[list[str]] = []
-    seen: set[tuple[str, ...]] = set()
+    best: dict[tuple[str, ...], list[str]] = {}
     for src in sources:
         for dst in targets:
             if src == dst:
                 continue
             for path in nx.all_simple_paths(graph, src, dst, cutoff=cutoff):
                 key = tuple(tool_sequence(graph, path))
-                if key not in seen:
-                    seen.add(key)
-                    paths.append(path)
+                # Same chain, longer node path = more complete attack story.
+                if key not in best or len(path) > len(best[key]):
+                    best[key] = path
+    paths.extend(best.values())
     return paths
 
 
