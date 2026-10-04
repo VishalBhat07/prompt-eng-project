@@ -20,7 +20,10 @@ import uuid
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 PROXY_URL = os.getenv("PROXY_URL", "http://localhost:8000")
-AGENT_MODEL = os.getenv("AGENT_MODEL", "llama-3.3-70b-versatile")
+# Verified live on Groq 2026-10-04. gpt-oss are reasoning models: keep
+# max_tokens generous (>=1024) or replies come back empty.
+AGENT_MODEL = os.getenv("AGENT_MODEL", "openai/gpt-oss-120b")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", "openai/gpt-oss-20b")
 
 CATALOG = [
     ("filesystem-mcp", "list_files", "List files in the lab data directory.", {}),
@@ -88,7 +91,7 @@ def plan_with_llm(task: str) -> tuple[str, str, dict]:
                 {"role": "user", "content": f"Task: {task}\nTools:\n{catalog_txt}"},
             ],
             temperature=0,
-            max_tokens=300,
+            max_tokens=1024,
         )
         plan = json.loads(resp.choices[0].message.content or "{}")
         return (plan["server"], plan["tool"], plan.get("arguments", {}))
