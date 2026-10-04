@@ -94,7 +94,7 @@ export default function GraphExplorer() {
       labelStyle: { fill: 'var(--faint)', fontSize: 10, fontFamily: 'var(--font-mono)' },
       labelBgStyle: { fill: 'var(--bg-0)' },
       animated: e.type === 'SENDS' || e.type === 'FLOWS_TO',
-      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'rgba(255,255,255,0.22)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2 },
+      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'var(--edge-faint)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2 },
     })), [data, visIds]);
 
   const sel = data?.nodes.find((n) => n.id === selected) ?? null;
@@ -134,7 +134,7 @@ export default function GraphExplorer() {
             onNodeClick={(_, n) => { setSelected(n.id); setFocus(null); }}
             onNodeMouseEnter={(_, n) => setHovered(n.id)}
             onNodeMouseLeave={() => setHovered(null)}>
-            <Background color="rgba(255,255,255,0.05)" gap={28} />
+            <Background color="var(--edge-faint)" gap={28} />
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable style={{ background: 'var(--bg-1)' }} />
           </ReactFlow>

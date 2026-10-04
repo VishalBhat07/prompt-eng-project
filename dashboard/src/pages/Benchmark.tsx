@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { BenchDoc } from '../data/types';
 
-const TIP = { background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', fontSize: 13 };
-const AXIS = { fill: '#63636b', fontSize: 12 };
+const TIP = { background: 'var(--bg-1)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink)' };
+// SVG attributes (ticks, grid) can't use var(); fixed mid-gray reads on both themes.
+const AXIS = { fill: '#888888', fontSize: 12 };
+const GRID = 'rgba(128,128,128,0.25)';
 
 export default function Benchmark() {
   const [d, setD] = useState<BenchDoc | null>(null);
@@ -37,7 +39,7 @@ export default function Benchmark() {
             <h3>Baselines vs VeriGraph <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· attacks caught / 8</span></h3>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={baseRows}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
                 <XAxis dataKey="name" tick={AXIS} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={TIP} />
@@ -49,7 +51,7 @@ export default function Benchmark() {
             <h3>Ablation ladder <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· layers add detection</span></h3>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={ablRows}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
                 <XAxis dataKey="name" tick={AXIS} axisLine={false} tickLine={false} interval={0} angle={-14} height={64} />
                 <YAxis tick={AXIS} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={TIP} />
@@ -61,7 +63,7 @@ export default function Benchmark() {
             <h3>Latency <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· analyze() seconds, n={d.latency.n}</span></h3>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={[{ x: 'mean', s: d.latency.mean_s }, { x: 'p95', s: d.latency.p95_s }]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
                 <XAxis dataKey="x" tick={AXIS} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={TIP} />

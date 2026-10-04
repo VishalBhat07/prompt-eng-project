@@ -36,8 +36,8 @@ export function RiskMeter({ score, showNumber = true }: { score: number; showNum
         {segments.map((on, i) => (
           <span key={i} style={{
             width: 14, height: 8, borderRadius: 2,
-            background: on ? color : 'rgba(255,255,255,0.12)',
-            borderLeft: (i === 3 || i === 6 || i === 8) ? '1px solid rgba(255,255,255,0.35)' : undefined,
+            background: on ? color : 'var(--track)',
+            borderLeft: (i === 3 || i === 6 || i === 8) ? '1px solid var(--edge-faint)' : undefined,
           }} />
         ))}
       </span>
