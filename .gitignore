@@ -20,7 +20,7 @@ events.jsonl
 
 # OS / IDE
 .DS_Store
-.vscode/
+/.vscode/
 .idea/
 
 # Frontend
