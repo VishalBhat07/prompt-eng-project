@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import BlurText from '../components/bits/BlurText';
-import Noise from '../components/bits/Noise';
 
 const FEED = [
   'S-7b68 · read_file → ALLOW',
@@ -63,10 +62,7 @@ function Proof() {
 export default function Home() {
   return (
     <div>
-      <header style={{ padding: '88px 0 56px', maxWidth: 860, position: 'relative' }}>
-        <div aria-hidden style={{ position: 'absolute', inset: -40, overflow: 'hidden', opacity: 0.5, pointerEvents: 'none' }}>
-          <Noise patternAlpha={7} patternRefreshInterval={6} />
-        </div>
+      <header style={{ padding: '88px 0 56px', maxWidth: 860 }}>
         <span className="eyebrow">Runtime defense for tool-using agents</span>
         <BlurText tag="h1" className="hero-blur" delay={90}
           text="Detect the attack path, not just the sentence." />
