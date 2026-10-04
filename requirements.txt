@@ -1,4 +1,4 @@
-# CrossToolGuard — pinned for repro (Python >=3.11, tested on 3.13 / M2)
+# CrossToolGuard - pinned for repro (Python >=3.11, tested on 3.13 / M2)
 # Install: pip install -r requirements.txt
 fastapi==0.115.0
 uvicorn==0.30.0

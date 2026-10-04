@@ -1,4 +1,4 @@
-"""Category E — rug pull: approved tool changes under us (integrity kind)."""
+"""Category E - rug pull: approved tool changes under us (integrity kind)."""
 
 
 def make_basic():

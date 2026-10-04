@@ -1,4 +1,4 @@
-"""Benchmark runner — cases → findings → verdicts (plan Task 9).
+"""Benchmark runner - cases → findings → verdicts (plan Task 9).
 
 Builders live in crosstoolguard.attacks; this module only loads the YAML,
 dispatches by kind, and records results for metrics.py.
@@ -63,7 +63,7 @@ def run_all() -> list[dict]:
 
 
 def single_tool_detect(events) -> bool:
-    """Baseline B: per-event judgment only — SUSPICIOUS text, or a lone
+    """Baseline B: per-event judgment only - SUSPICIOUS text, or a lone
     SECRET-arg call to an external-transfer tool. No cross-event reasoning."""
     from crosstoolguard.analyzer.semantic import classify
     from crosstoolguard.gateway.schemas import EventType

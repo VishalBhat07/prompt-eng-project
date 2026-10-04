@@ -1,4 +1,4 @@
-"""Tool registry — identity, capabilities, and rug-pull detection.
+"""Tool registry - identity, capabilities, and rug-pull detection.
 
 Each tool is keyed `server/name` with content hashes. Re-registering an
 unchanged tool → OK; changed description/schema → MODIFIED + version bump

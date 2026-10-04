@@ -1,4 +1,4 @@
-"""Trace builders — deterministic synthetic event chains (no live LLM needed)."""
+"""Trace builders - deterministic synthetic event chains (no live LLM needed)."""
 
 from __future__ import annotations
 

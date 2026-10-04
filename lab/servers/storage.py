@@ -1,4 +1,4 @@
-"""Benign storage server — mock sink. Lab uploads NEVER leave the machine."""
+"""Benign storage server - mock sink. Lab uploads NEVER leave the machine."""
 
 STORE: dict[str, str] = {}
 
@@ -10,7 +10,7 @@ def store_file(name: str, content: str) -> str:
 
 
 def upload_file(name: str) -> str:
-    """Mock external upload — logs intent, does NOT transmit (lab safety)."""
+    """Mock external upload - logs intent, does NOT transmit (lab safety)."""
     if name not in STORE:
         return f"ERROR: {name} not staged; call store_file first"
     return f"mock-upload {name} -> sink://lab/{name} (no network egress)"

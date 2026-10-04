@@ -1,4 +1,4 @@
-SYNTHETIC DATA — safe for benchmarks, demos, and screenshots.
+SYNTHETIC DATA - safe for benchmarks, demos, and screenshots.
 No real secrets, keys, or PII anywhere in this file.
 
 Invoice #INV-2026-0042

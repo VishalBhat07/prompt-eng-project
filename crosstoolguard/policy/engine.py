@@ -1,8 +1,8 @@
-"""Policy engine — findings → verdict with deny-override (plan G7).
+"""Policy engine - findings → verdict with deny-override (plan G7).
 
 Severity order: BLOCK > APPROVAL > QUARANTINE > MONITOR > ALLOW.
 No findings → ALLOW. QUARANTINE degrades to APPROVAL at the proxy
-(no quarantine store exists yet — Task 8 dashboard flow).
+(no quarantine store exists yet - Task 8 dashboard flow).
 """
 
 from __future__ import annotations

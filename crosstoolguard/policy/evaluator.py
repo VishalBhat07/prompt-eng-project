@@ -1,4 +1,4 @@
-"""Finding signals — reduce a graph path to policy-matchable facts."""
+"""Finding signals - reduce a graph path to policy-matchable facts."""
 
 from __future__ import annotations
 

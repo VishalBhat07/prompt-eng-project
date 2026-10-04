@@ -14,7 +14,7 @@ export default function Approvals() {
   const [log, setLog] = useState<string[]>([]);
   const decide = (id: string, ok: boolean) => {
     setItems((p) => p.filter((a) => a.id !== id));
-    setLog((l) => [`${ok ? 'Granted' : 'Denied'} ${id} — ${new Date().toLocaleTimeString()}`, ...l]);
+    setLog((l) => [`${ok ? 'Granted' : 'Denied'} ${id} - ${new Date().toLocaleTimeString()}`, ...l]);
   };
   return (
     <div>

@@ -1,4 +1,4 @@
-"""Categories D + I — escalation and credential-to-network."""
+"""Categories D + I - escalation and credential-to-network."""
 
 from crosstoolguard.attacks import CREDENTIAL, SECRET, Trace
 

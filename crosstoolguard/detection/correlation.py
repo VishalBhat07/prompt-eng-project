@@ -1,4 +1,4 @@
-"""Cross-tool correlation engine — the heart of CrossToolGuard (doc §21).
+"""Cross-tool correlation engine - the heart of CrossToolGuard (doc §21).
 
 Instead of judging one tool call, analyze() evaluates whole paths:
 build the attack graph, enrich it with semantic instruction nodes, match
@@ -45,7 +45,7 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
     Two routes: single outputs that classify SUSPICIOUS alone, and
     distributed fragments that are weak alone but malicious composed
     (sliding window over consecutive outputs, Task 9-F).
-    Only labels and scores are stored — never raw output text.
+    Only labels and scores are stored - never raw output text.
     """
     outputs = [e for e in events
                if e.event_type == EventType.TOOL_OUTPUT and e.output_preview]

@@ -1,4 +1,4 @@
-"""Behavioral anomaly — expected-vs-observed workflow deviation (doc §28).
+"""Behavioral anomaly - expected-vs-observed workflow deviation (doc §28).
 
 v1: always 0.0 (no baseline learned yet). The hook exists so risk.py
 already accounts for the term; learning per-task baselines

@@ -1,4 +1,4 @@
-"""Upstream transport — Task 1 lab adapter (in-process).
+"""Upstream transport - Task 1 lab adapter (in-process).
 
 Calls the benign lab servers directly. Replaced by real MCP stdio /
 Streamable-HTTP transport in Task 2 (tool registry); the proxy ↔ transport

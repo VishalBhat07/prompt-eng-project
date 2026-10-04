@@ -1,4 +1,4 @@
-"""Minimal ReAct lab agent — Groq-first (free tier), local fallback.
+"""Minimal ReAct lab agent - Groq-first (free tier), local fallback.
 
 Routes EVERY tool call via PROXY_URL when reachable (CrossToolGuard sees
 the full event stream). Falls back to direct local dispatch only when the
@@ -69,7 +69,7 @@ def call_tool(session_id: str, server: str, tool: str, args: dict) -> str:
         r.raise_for_status()
         return str(r.json().get("result", r.text))
     except Exception:
-        print(f"[agent] proxy unreachable at {PROXY_URL} — local fallback (dev only)", flush=True)
+        print(f"[agent] proxy unreachable at {PROXY_URL} - local fallback (dev only)", flush=True)
         return _local_dispatch(server, tool, args)
 
 
@@ -77,7 +77,7 @@ def plan_with_llm(task: str) -> tuple[str, str, dict]:
     """Ask Groq which tool to call; offline fallback returns a sane default."""
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        print("[agent] GROQ_API_KEY unset — using offline default plan", flush=True)
+        print("[agent] GROQ_API_KEY unset - using offline default plan", flush=True)
         return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
     try:
         from groq import Groq
@@ -96,7 +96,7 @@ def plan_with_llm(task: str) -> tuple[str, str, dict]:
         plan = json.loads(resp.choices[0].message.content or "{}")
         return (plan["server"], plan["tool"], plan.get("arguments", {}))
     except Exception as exc:
-        print(f"[agent] Groq error ({exc}) — offline default plan", flush=True)
+        print(f"[agent] Groq error ({exc}) - offline default plan", flush=True)
         return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
 
 

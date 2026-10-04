@@ -1,4 +1,4 @@
-# CrossToolGuard lab — isolated `ctg-lab` network, synthetic data only.
+# CrossToolGuard lab - isolated `ctg-lab` network, synthetic data only.
 # Task 0: `docker compose config` validates. `up` goes live in Task 1
 # once crosstoolguard.gateway.proxy implements the FastAPI app.
 # Total memory capped for MacBook Air M2 8GB (proxy ≤2GB).

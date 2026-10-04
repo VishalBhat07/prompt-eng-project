@@ -1,4 +1,4 @@
-# Benchmark v1 — 10 attack categories (A–J) + 8 benign workflows.
+# Benchmark v1 - 10 attack categories (A–J) + 8 benign workflows.
 # kind: detection (analyze+decide) | integrity (registry) | provenance (lineage).
 # `builder` is "module:function" under crosstoolguard.attacks (or
 # crosstoolguard.attacks.<module>); expected.patterns is the ground truth.

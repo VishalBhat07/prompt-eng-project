@@ -1,4 +1,4 @@
-# Capability taxonomy v1 — heuristic name/description matchers.
+# Capability taxonomy v1 - heuristic name/description matchers.
 # A tool gets every capability whose `any` pattern matches
 # "<name> <description>" (case-insensitive regex).
 # PRIVILEGED is derived, never matched directly (see capabilities.py).

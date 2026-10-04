@@ -1,4 +1,4 @@
-"""Categories A + F — direct poisoning and distributed fragments."""
+"""Categories A + F - direct poisoning and distributed fragments."""
 
 from crosstoolguard.attacks import Trace
 

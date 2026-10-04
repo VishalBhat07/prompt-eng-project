@@ -1,4 +1,4 @@
-"""Event normalization — classification, redaction, hashing (plan G5/G9).
+"""Event normalization - classification, redaction, hashing (plan G5/G9).
 
 Layer 1 sieve (regex + entropy). No ML here; embeddings/LLM-judge arrive
 in Task 4. Raw secrets are NEVER stored: previews are redacted, arguments
@@ -13,7 +13,7 @@ import math
 import re
 from collections import Counter
 
-# (pattern, data_class) — first match wins.
+# (pattern, data_class) - first match wins.
 SECRET_PATTERNS: list[tuple[str, str]] = [
     (r"AKIA[0-9A-Z]{16}", "CREDENTIAL"),
     (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "CREDENTIAL"),

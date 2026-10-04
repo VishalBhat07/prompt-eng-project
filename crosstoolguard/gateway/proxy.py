@@ -1,4 +1,4 @@
-"""MCP proxy — sole enforcement point between agent and MCP servers.
+"""MCP proxy - sole enforcement point between agent and MCP servers.
 
 Modes (env MODE, read per request so tests can flip it):
 - monitor:   log events, ALLOW everything (Sidecar bootstrap).

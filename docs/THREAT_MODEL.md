@@ -1,4 +1,4 @@
-# Threat Model v1 — CrossToolGuard
+# Threat Model v1 - CrossToolGuard
 
 > Scope: semester lab prototype. All attacks use synthetic data in an
 > isolated Docker network. No real secrets, keys, or PII are ever used.

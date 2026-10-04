@@ -4,7 +4,7 @@ Risk(path) = ΣNodeRisk + ΣEdgeRisk + DataSensitivity + CapabilityRisk
              + BehaviorAnomaly + PatternBonus, normalized to 0.0–1.0.
 
 NORMALIZER is tuned on the lab set (exfil ≈ 2.0, benign ≈ 0.2) and MUST
-be re-validated in the Task 10 ablation — it is experimental, not law.
+be re-validated in the Task 10 ablation - it is experimental, not law.
 Policy bands: 0.0–0.3 ALLOW, 0.3–0.6 MONITOR, 0.6–0.8 APPROVAL, 0.8–1.0 BLOCK.
 """
 

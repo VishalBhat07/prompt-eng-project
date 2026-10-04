@@ -1,4 +1,4 @@
-# Policy set v1 — deny-override, versioned (plan G7).
+# Policy set v1 - deny-override, versioned (plan G7).
 # Conditions are evaluated against finding signals (evaluator.py):
 #   data_involved: finding touches classified data (SECRET | CREDENTIAL)
 #   external_sink: chain reaches EXTERNAL_TRANSFER capability

@@ -1,7 +1,7 @@
-"""Attack-path explanations — why the graph was considered malicious (doc §68).
+"""Attack-path explanations - why the graph was considered malicious (doc §68).
 
 One paragraph per finding, naming origin, chain, violated policy, and
-decision. Labels and tool names only — never raw content.
+decision. Labels and tool names only - never raw content.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def explain_finding(graph: nx.DiGraph, finding: Finding, *, verdict: str, policy
                 if "EXTERNAL_TRANSFER" in caps else "which has privileged capability"
                 if "PRIVILEGED" in caps else "which is not privileged")
     data_word = _sensitivity_word(graph, finding)
-    chain_str = " → ".join(seq) if seq else "—"
+    chain_str = " → ".join(seq) if seq else "-"
     decision = "BLOCKED" if verdict == "BLOCK" else verdict
     return (f"The agent accessed {data_word} data via `{origin}`. The resulting data {chain}, "
             f"{cap_note}. The combined path ({chain_str}) matches `{finding.pattern}` "

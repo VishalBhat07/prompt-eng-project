@@ -1,4 +1,4 @@
-"""Policy rules — versioned YAML policies with finding-signal matching."""
+"""Policy rules - versioned YAML policies with finding-signal matching."""
 
 from __future__ import annotations
 

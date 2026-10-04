@@ -7,7 +7,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 
-# Secrets — NEVER commit
+# Secrets - NEVER commit
 .env
 .env.*
 *.pem

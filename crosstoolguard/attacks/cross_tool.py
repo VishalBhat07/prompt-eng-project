@@ -1,4 +1,4 @@
-"""Categories B, G, H, J — indirect, laundering, shadow, multi-stage."""
+"""Categories B, G, H, J - indirect, laundering, shadow, multi-stage."""
 
 from crosstoolguard.attacks import SECRET, Trace
 

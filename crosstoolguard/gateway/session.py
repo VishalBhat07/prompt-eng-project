@@ -1,4 +1,4 @@
-"""Session management — one isolated id per agent run.
+"""Session management - one isolated id per agent run.
 
 Every event/graph node carries session_id; no edges ever cross sessions
 (threat-model §4, plan G6). Stub grows into auth-aware sessions in Task 7+.

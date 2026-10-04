@@ -1,4 +1,4 @@
-"""Task 1 + 7: MCP proxy — monitor allows, enforcing correlates, fail-closed."""
+"""Task 1 + 7: MCP proxy - monitor allows, enforcing correlates, fail-closed."""
 
 from fastapi.testclient import TestClient
 

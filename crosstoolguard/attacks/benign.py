@@ -1,4 +1,4 @@
-"""Benign workflows — must stay quiet (FPR control set, v1: 8 traces)."""
+"""Benign workflows - must stay quiet (FPR control set, v1: 8 traces)."""
 
 from crosstoolguard.attacks import Trace
 

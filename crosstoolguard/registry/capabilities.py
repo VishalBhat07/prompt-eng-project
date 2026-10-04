@@ -1,6 +1,6 @@
 """Capability extraction + path sensitivity from YAML taxonomy.
 
-Heuristic v1 (name/description regex). Deterministic and explainable —
+Heuristic v1 (name/description regex). Deterministic and explainable -
 good enough for the MVP cut; embedding-assisted mapping is a stretch
 extension, not a replacement.
 """

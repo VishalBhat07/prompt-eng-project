@@ -1,11 +1,11 @@
-"""Attack graph builder — events → temporal NetworkX DiGraph.
+"""Attack graph builder - events → temporal NetworkX DiGraph.
 
 One graph per session (mixed sessions → ValueError, G6). Edges point
 forward in time so `find_paths` exposes the attack direction, not just
 co-occurrence:
 
 - Server INVOKES Tool (every call)
-- Tool GENERATES Data (classified outputs; SECRET/CREDENTIAL only —
+- Tool GENERATES Data (classified outputs; SECRET/CREDENTIAL only -
   PUBLIC outputs add no security signal)
 - Data FLOWS_TO Tool (call whose parent is a classified output)
 - Tool INFLUENCES Tool (consecutive calls: temporal order backbone)

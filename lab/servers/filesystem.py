@@ -1,4 +1,4 @@
-"""Benign filesystem server — synthetic lab data only."""
+"""Benign filesystem server - synthetic lab data only."""
 
 from pathlib import Path
 

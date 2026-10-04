@@ -1,4 +1,4 @@
-"""Normalized MCP event schemas — proxy ↔ graph ↔ policy contract.
+"""Normalized MCP event schemas - proxy ↔ graph ↔ policy contract.
 
 Global constraints enforced here:
 - every event carries timestamp/session_id/server/tool/event_type/args_hash

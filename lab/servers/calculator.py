@@ -1,4 +1,4 @@
-"""Benign calculator server — pure functions, no I/O."""
+"""Benign calculator server - pure functions, no I/O."""
 
 
 def add(a: float, b: float) -> float:

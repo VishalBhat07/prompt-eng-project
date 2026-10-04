@@ -2,7 +2,7 @@
 
 **Graph-based runtime detection of coordinated attacks in MCP-based LLM agents.**
 
-Single tools look benign — `read_file → ALLOW, store_file → ALLOW, upload_file → ALLOW`.
+Single tools look benign - `read_file → ALLOW, store_file → ALLOW, upload_file → ALLOW`.
 The attack is the *path*: `SECRET → stage → external`. CrossToolGuard models tools,
 capabilities, instructions, data, and runtime actions as a temporal attack graph and
 blocks the chain (`ALLOW, ALLOW, BLOCK`) instead of judging tools in isolation.
@@ -26,7 +26,7 @@ USER → LLM AGENT → CrossToolGuard PROXY (monitor/enforcing, fail-closed) →
 ## Prerequisites
 
 - Python 3.11+ (tested 3.11 / 3.13), Node 18+, Docker (optional, for compose)
-- A **Groq API key** (free at console.groq.com) — agent reasoning + L4 prompt-guard judge.
+- A **Groq API key** (free at console.groq.com) - agent reasoning + L4 prompt-guard judge.
   No OpenAI subscription needed. Local fallback: `ollama pull llama3.2:3b` (~2 GB, M2-Air safe).
 
 ## Setup
@@ -41,13 +41,13 @@ cd dashboard && npm install --no-audit && cd ..
 ## Run (3 terminals)
 
 ```bash
-# 1 — proxy (use MODE=monitor to log-only, MODE=enforcing to block)
+# 1 - proxy (use MODE=monitor to log-only, MODE=enforcing to block)
 MODE=enforcing python -m uvicorn crosstoolguard.gateway.proxy:app --port 8000
 
-# 2 — lab agent (Groq plans, every call routed via the proxy)
+# 2 - lab agent (Groq plans, every call routed via the proxy)
 python lab/agent.py --task "summarize lab/data/invoice.txt"
 
-# 3 — dashboard
+# 3 - dashboard
 cd dashboard && npm run dev   # → http://127.0.0.1:5173 (proxies /api + /ws to :8000)
 ```
 
@@ -104,7 +104,7 @@ tests/          mirrors src, 58 tests, TDD throughout
 
 ## Safety & conventions
 
-- **Synthetic data only** (`lab/data/`, `SYNTHETIC_*` markers). No real secrets, keys, or PII —
+- **Synthetic data only** (`lab/data/`, `SYNTHETIC_*` markers). No real secrets, keys, or PII -
   in repo, logs, or screenshots. Events store hashes + labels; previews redacted + truncated.
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
   Work on `feat/*` branches, merge to `main` at sprint boundaries, push then.

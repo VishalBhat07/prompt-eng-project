@@ -105,7 +105,7 @@ export default function GraphExplorer() {
       <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
         <span className="eyebrow">Inspect</span>
         <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Graph explorer</h1>
-        <p className="sub" style={{ fontSize: 16 }}>One graph per session. The red path is the attack — everything else is context.</p>
+        <p className="sub" style={{ fontSize: 16 }}>One graph per session. The red path is the attack - everything else is context.</p>
       </header>
 
       <div style={{

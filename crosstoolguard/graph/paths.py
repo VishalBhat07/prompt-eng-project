@@ -1,4 +1,4 @@
-"""Path queries — the heart of CrossToolGuard (doc §21).
+"""Path queries - the heart of CrossToolGuard (doc §21).
 
 An attack is a suspicious *path*, not a suspicious node: find directed
 routes from classified Data to attacker-useful capabilities/destinations.

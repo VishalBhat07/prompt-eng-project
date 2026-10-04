@@ -1,4 +1,4 @@
-"""Semantic instruction analyzer — 4 layers, canonicalize first (plan G8).
+"""Semantic instruction analyzer - 4 layers, canonicalize first (plan G8).
 
 L1 regex (fast, decisive) → L2 embeddings (paraphrase) → L3 keyword
 weights (cheap prior) → L4 Groq prompt-guard (ambiguous band only).

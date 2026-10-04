@@ -1,4 +1,4 @@
-"""Task 0.3 RED: Event/Verdict schemas — must fail until schemas.py exists."""
+"""Task 0.3 RED: Event/Verdict schemas - must fail until schemas.py exists."""
 
 from datetime import datetime, timezone
 

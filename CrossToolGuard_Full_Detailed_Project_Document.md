@@ -1840,7 +1840,7 @@ crosstoolguard/
 
 This project is well suited for four people.
 
-## Member 1 — MCP Runtime and Tool Graph
+## Member 1 - MCP Runtime and Tool Graph
 
 Responsibilities:
 
@@ -1858,7 +1858,7 @@ Main research question:
 
 ---
 
-## Member 2 — Semantic Security
+## Member 2 - Semantic Security
 
 Responsibilities:
 
@@ -1876,7 +1876,7 @@ Main research question:
 
 ---
 
-## Member 3 — Graph and Runtime Security
+## Member 3 - Graph and Runtime Security
 
 Responsibilities:
 
@@ -1895,7 +1895,7 @@ Main research question:
 
 ---
 
-## Member 4 — Policy, Dashboard and Evaluation
+## Member 4 - Policy, Dashboard and Evaluation
 
 Responsibilities:
 
@@ -1917,7 +1917,7 @@ Main research question:
 
 # 46. Development Plan
 
-## Phase 1 — Basic Agent
+## Phase 1 - Basic Agent
 
 Build:
 
@@ -1946,7 +1946,7 @@ working MCP agent
 
 ---
 
-## Phase 2 — MCP Proxy
+## Phase 2 - MCP Proxy
 
 Insert:
 
@@ -1962,7 +1962,7 @@ Capture events.
 
 ---
 
-## Phase 3 — Tool Registry
+## Phase 3 - Tool Registry
 
 Implement:
 
@@ -1978,7 +1978,7 @@ version
 
 ---
 
-## Phase 4 — Event Normalization
+## Phase 4 - Event Normalization
 
 Convert raw MCP events into:
 
@@ -1994,7 +1994,7 @@ DATA_SENT
 
 ---
 
-## Phase 5 — Provenance
+## Phase 5 - Provenance
 
 Track:
 
@@ -2012,7 +2012,7 @@ next tool
 
 ---
 
-## Phase 6 — Graph Builder
+## Phase 6 - Graph Builder
 
 Build:
 
@@ -2028,7 +2028,7 @@ session
 
 ---
 
-## Phase 7 — Attack Detector
+## Phase 7 - Attack Detector
 
 Implement:
 
@@ -2042,7 +2042,7 @@ semantic analysis
 
 ---
 
-## Phase 8 — Cross-Tool Correlation
+## Phase 8 - Cross-Tool Correlation
 
 Detect:
 
@@ -2054,7 +2054,7 @@ and more complex branching graphs.
 
 ---
 
-## Phase 9 — Policy Engine
+## Phase 9 - Policy Engine
 
 Implement:
 
@@ -2068,7 +2068,7 @@ BLOCK
 
 ---
 
-## Phase 10 — Dashboard
+## Phase 10 - Dashboard
 
 Show:
 
@@ -2083,7 +2083,7 @@ provenance
 
 ---
 
-## Phase 11 — Evaluation
+## Phase 11 - Evaluation
 
 Run:
 
@@ -2157,7 +2157,7 @@ ground_truth
 
 # 49. Evaluation Metrics
 
-## Metric 1 — Attack Detection Rate
+## Metric 1 - Attack Detection Rate
 
 ```text
 Detection Rate =
@@ -2168,7 +2168,7 @@ Total Attacks
 
 ---
 
-## Metric 2 — Attack Success Rate
+## Metric 2 - Attack Success Rate
 
 ```text
 ASR =
@@ -2181,7 +2181,7 @@ Lower ASR indicates fewer attacks succeeded, but the final report should present
 
 ---
 
-## Metric 3 — False Positive Rate
+## Metric 3 - False Positive Rate
 
 ```text
 FPR =
@@ -2192,7 +2192,7 @@ Total Benign Workflows
 
 ---
 
-## Metric 4 — Cross-Tool Detection Gain
+## Metric 4 - Cross-Tool Detection Gain
 
 This is one of the most important metrics.
 
@@ -2220,7 +2220,7 @@ The values should come from experiments.
 
 ---
 
-# 50. Metric 5 — Path Detection Accuracy
+# 50. Metric 5 - Path Detection Accuracy
 
 Measure whether the system identifies the correct attack path.
 
@@ -2242,7 +2242,7 @@ path accuracy
 
 ---
 
-# 51. Metric 6 — Latency Overhead
+# 51. Metric 6 - Latency Overhead
 
 Measure:
 
@@ -2263,7 +2263,7 @@ Baseline
 
 ---
 
-# 52. Metric 7 — Legitimate Task Success
+# 52. Metric 7 - Legitimate Task Success
 
 Test ordinary tasks:
 
@@ -2287,7 +2287,7 @@ The goal is to quantify whether security controls interfere with legitimate work
 
 ---
 
-# 53. Metric 8 — Explainability
+# 53. Metric 8 - Explainability
 
 For each detected attack, verify whether the system can provide:
 
@@ -2311,7 +2311,7 @@ Provenance completeness
 
 # 54. Baseline Systems
 
-## Baseline A — No Security
+## Baseline A - No Security
 
 ```text
 LLM → MCP
@@ -2319,7 +2319,7 @@ LLM → MCP
 
 ---
 
-## Baseline B — Single-Tool Detector
+## Baseline B - Single-Tool Detector
 
 Each tool is evaluated independently.
 
@@ -2333,7 +2333,7 @@ No cross-tool correlation.
 
 ---
 
-## Baseline C — Keyword-Based Detector
+## Baseline C - Keyword-Based Detector
 
 ```text
 MCP output
@@ -2431,7 +2431,7 @@ The experiment should test this hypothesis.
 
 # 57. Syllabus Mapping
 
-## Unit I — Prompt Engineering Fundamentals
+## Unit I - Prompt Engineering Fundamentals
 
 Relevant concepts:
 
@@ -2453,7 +2453,7 @@ prompt poisoning analysis
 
 ---
 
-# 58. Unit II — Prompting Techniques
+# 58. Unit II - Prompting Techniques
 
 ### ReAct
 
@@ -2483,7 +2483,7 @@ Fine-tune a small semantic security classifier using PEFT.
 
 ---
 
-# 59. Unit III — Tools and Evaluation
+# 59. Unit III - Tools and Evaluation
 
 Direct mapping:
 
@@ -2500,7 +2500,7 @@ CrossToolGuard turns these into runtime security experiments.
 
 ---
 
-# 60. Unit IV — Function Calling and Agents
+# 60. Unit IV - Function Calling and Agents
 
 Direct mapping:
 
@@ -2516,7 +2516,7 @@ MCP tools become the runtime action environment.
 
 ---
 
-# 61. Unit V — Security and Ethics
+# 61. Unit V - Security and Ethics
 
 Direct mapping:
 
@@ -2537,10 +2537,10 @@ CrossToolGuard extends these concepts to multi-tool execution.
 
 | Course Outcome | CrossToolGuard |
 |---|---|
-| CO1 — Understand prompt principles | Instruction/data separation |
-| CO2 — Design prompts | Secure tool/context design |
-| CO3 — Evaluate prompts | Attack benchmark and ablation |
-| CO4 — Apply prompting | Secure MCP agent implementation |
+| CO1 - Understand prompt principles | Instruction/data separation |
+| CO2 - Design prompts | Secure tool/context design |
+| CO3 - Evaluate prompts | Attack benchmark and ablation |
+| CO4 - Apply prompting | Secure MCP agent implementation |
 
 ---
 
@@ -2548,7 +2548,7 @@ CrossToolGuard extends these concepts to multi-tool execution.
 
 The final demonstration should contain three stages.
 
-## Stage 1 — Individual Tools
+## Stage 1 - Individual Tools
 
 Show:
 
@@ -2560,7 +2560,7 @@ Tool C = SAFE
 
 ---
 
-## Stage 2 — Coordinated Attack
+## Stage 2 - Coordinated Attack
 
 Execute:
 
@@ -2582,7 +2582,7 @@ A simple single-tool detector may not flag each individual tool.
 
 ---
 
-## Stage 3 — CrossToolGuard
+## Stage 3 - CrossToolGuard
 
 Show:
 
@@ -2621,7 +2621,7 @@ This should be the main demonstration.
 
 ---
 
-# 64. Advanced Feature — Expected vs Observed Workflow
+# 64. Advanced Feature - Expected vs Observed Workflow
 
 For a given task:
 
@@ -2664,7 +2664,7 @@ This can reveal attacks that do not contain obvious malicious text.
 
 ---
 
-# 65. Advanced Feature — Graph Anomaly Detection
+# 65. Advanced Feature - Graph Anomaly Detection
 
 Represent normal workflows as graph patterns.
 
@@ -2704,7 +2704,7 @@ For a semester project, Version 1 or Version 2 is sufficient. Versions 3–4 can
 
 ---
 
-# 66. Advanced Feature — Graph Neural Network
+# 66. Advanced Feature - Graph Neural Network
 
 An optional research extension is to represent attack graphs as:
 
@@ -2733,7 +2733,7 @@ The graph itself is already the important research contribution.
 
 ---
 
-# 67. Advanced Feature — Temporal Graph
+# 67. Advanced Feature - Temporal Graph
 
 Attack relationships can depend on order.
 
@@ -2775,7 +2775,7 @@ This enables detection of multi-stage attacks.
 
 ---
 
-# 68. Advanced Feature — Attack Path Explanation
+# 68. Advanced Feature - Attack Path Explanation
 
 Generate a natural-language explanation:
 
@@ -2785,7 +2785,7 @@ This is excellent for the final demo.
 
 ---
 
-# 69. Advanced Feature — Attack Simulation
+# 69. Advanced Feature - Attack Simulation
 
 Build an attack generator.
 
@@ -2814,7 +2814,7 @@ This turns the project into a security testing framework.
 
 ---
 
-# 70. Advanced Feature — Attack Mutation
+# 70. Advanced Feature - Attack Mutation
 
 Start with:
 

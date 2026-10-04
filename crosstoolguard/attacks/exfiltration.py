@@ -1,4 +1,4 @@
-"""Category C — cross-tool exfiltration (SECRET → stage → external)."""
+"""Category C - cross-tool exfiltration (SECRET → stage → external)."""
 
 from crosstoolguard.attacks import CREDENTIAL, SECRET, Trace
 

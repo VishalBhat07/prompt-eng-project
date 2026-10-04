@@ -1,4 +1,4 @@
-"""Tool integrity — content hashes that catch rug pulls.
+"""Tool integrity - content hashes that catch rug pulls.
 
 A tool that changes description/schema after approval is re-analyzed
 instead of trusted (threat-model §2, plan G-attack E).

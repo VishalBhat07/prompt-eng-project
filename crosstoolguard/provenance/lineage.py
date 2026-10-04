@@ -1,4 +1,4 @@
-"""Lineage store — parent-linked events with session isolation.
+"""Lineage store - parent-linked events with session isolation.
 
 `original_source()` walks to the chain root, so laundered content
 (summarized, reformatted, re-stored) still points at the true origin.

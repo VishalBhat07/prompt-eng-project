@@ -1,4 +1,4 @@
-"""Evaluation metrics — pure functions over benchmark results (doc §49–53)."""
+"""Evaluation metrics - pure functions over benchmark results (doc §49–53)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Provenance tracker — facade over classification + lineage.
+"""Provenance tracker - facade over classification + lineage.
 
 Every tool call/output becomes a normalized Event (hashes + redacted
 previews only) linked into a per-session origin chain.

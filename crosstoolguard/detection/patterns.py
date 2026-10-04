@@ -1,4 +1,4 @@
-"""Attack pattern matching — ordered stages as path subsequences."""
+"""Attack pattern matching - ordered stages as path subsequences."""
 
 from __future__ import annotations
 

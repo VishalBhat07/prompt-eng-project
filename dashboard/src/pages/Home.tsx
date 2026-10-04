@@ -146,7 +146,7 @@ export default function Home() {
 
       <footer style={{ borderTop: '1px solid var(--line)', padding: '28px 0 8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--faint)' }}>
-          <span>VeriGraph — graph-based runtime defense for tool-using agents</span>
+          <span>VeriGraph - graph-based runtime defense for tool-using agents</span>
           <span className="mono">repo · docs · course project</span>
         </div>
       </footer>

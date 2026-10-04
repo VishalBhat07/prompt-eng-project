@@ -1,4 +1,4 @@
-"""Benign search server — keyword search over synthetic lab data only."""
+"""Benign search server - keyword search over synthetic lab data only."""
 
 from pathlib import Path
 
