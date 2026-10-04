@@ -48,6 +48,14 @@ p { margin: 0; }
 .sub { color: var(--muted); font-size: 17px; line-height: 1.65; }
 
 .mono { font-family: var(--font-mono); }
+.hero-blur {
+  font-size: clamp(40px, 5.4vw, 68px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 650;
+  margin: 20px 0 18px;
+  max-width: 12ch;
+}
 .card { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); }
 .hairline { border: 1px solid var(--line); border-radius: var(--radius); }
 .eyebrow {
