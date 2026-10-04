@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-abyss: #0b0e14;
+  --color-panel: #11151c;
+  --color-raised: #171c26;
+  --color-ink: #edf1f7;
+  --color-muted: #9aa4b2;
+  --color-accent: #2dd4bf;
+  --color-crit: #ff4d5e;
+  --color-high: #ffb020;
+  --color-clean: #2fd08a;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root {
+  --bg-0: #0b0e14;
+  --bg-1: #11151c;
+  --bg-2: #171c26;
+  --ink: #edf1f7;
+  --muted: #9aa4b2;
+  --accent: #2dd4bf;
+  --crit: #ff4d5e;
+  --high: #ffb020;
+  --clean: #2fd08a;
+  --radius: 8px;
+  --border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+.mono { font-family: var(--font-mono); }
+.card { background: var(--bg-1); border: var(--border); border-radius: var(--radius); }
+.sev-crit { color: var(--crit); }
+.sev-high { color: var(--high); }
+.sev-clean { color: var(--clean); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-once { animation: none !important; }
+}
+.pulse-once { animation: pulse-ring 1.6s ease-out 1; }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 94, 0.55); }
+  100% { box-shadow: 0 0 0 14px rgba(255, 77, 94, 0); }
+}
+.glow-crit { box-shadow: 0 0 18px rgba(255, 77, 94, 0.25); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

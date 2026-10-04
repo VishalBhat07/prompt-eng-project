@@ -1,0 +1,106 @@
+{
+  "generated_by": "crosstoolguard.evaluation.experiments (live run)",
+  "cases": 19,
+  "detection_rate": 1.0,
+  "false_positive_rate": 0.0,
+  "cross_tool_gain": [
+    "C-exfil-basic",
+    "C-exfil-file-stage",
+    "D-escalation-basic",
+    "F-distributed-basic",
+    "H-shadow-basic",
+    "I-creds-basic",
+    "J-multi-basic"
+  ],
+  "baselines": {
+    "A-no-security": {
+      "caught": 0,
+      "ids": []
+    },
+    "B-single-tool": {
+      "caught": 1,
+      "ids": [
+        "A-direct-basic"
+      ]
+    },
+    "C-keyword": {
+      "caught": 2,
+      "ids": [
+        "A-direct-basic",
+        "F-distributed-basic"
+      ]
+    },
+    "E-full": {
+      "caught": 8,
+      "ids": [
+        "A-direct-basic",
+        "C-exfil-basic",
+        "C-exfil-file-stage",
+        "D-escalation-basic",
+        "F-distributed-basic",
+        "H-shadow-basic",
+        "I-creds-basic",
+        "J-multi-basic"
+      ]
+    }
+  },
+  "ablation": {
+    "A-semantic-only": {
+      "caught": 1,
+      "ids": [
+        "A-direct-basic"
+      ]
+    },
+    "B-plus-provenance": {
+      "caught": 6,
+      "ids": [
+        "C-exfil-basic",
+        "C-exfil-file-stage",
+        "D-escalation-basic",
+        "H-shadow-basic",
+        "I-creds-basic",
+        "J-multi-basic"
+      ]
+    },
+    "C-plus-capabilities": {
+      "caught": 6,
+      "ids": [
+        "C-exfil-basic",
+        "C-exfil-file-stage",
+        "D-escalation-basic",
+        "H-shadow-basic",
+        "I-creds-basic",
+        "J-multi-basic"
+      ]
+    },
+    "D-graph-no-enrich": {
+      "caught": 6,
+      "ids": [
+        "C-exfil-basic",
+        "C-exfil-file-stage",
+        "D-escalation-basic",
+        "H-shadow-basic",
+        "I-creds-basic",
+        "J-multi-basic"
+      ]
+    },
+    "E-full": {
+      "caught": 8,
+      "ids": [
+        "A-direct-basic",
+        "C-exfil-basic",
+        "C-exfil-file-stage",
+        "D-escalation-basic",
+        "F-distributed-basic",
+        "H-shadow-basic",
+        "I-creds-basic",
+        "J-multi-basic"
+      ]
+    }
+  },
+  "latency": {
+    "mean_s": 0.01,
+    "p95_s": 0.035,
+    "n": 16
+  }
+}
