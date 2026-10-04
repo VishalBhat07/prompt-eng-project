@@ -23,6 +23,10 @@ events.jsonl
 .vscode/
 .idea/
 
+# Frontend
+dashboard/node_modules/
+dashboard/dist/
+
 # Worktrees (project-local isolation)
 .worktrees/
 worktrees/

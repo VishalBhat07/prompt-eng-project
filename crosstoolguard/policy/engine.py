@@ -24,6 +24,15 @@ def decide(actions: list[str]) -> Verdict:
 def decide_for_session(events: list[Event]) -> Verdict:
     """Correlate a session's events and return the enforced verdict."""
     graph, findings = analyze_with_graph(events)
-    actions = [p.action for f in findings for p in load_policies()
-               if policy_triggers(p, finding_signals(graph, f))]
-    return decide(actions)
+    return decide([action for _, action in reasons_for(graph, findings)])
+
+
+def reasons_for(graph, findings: list) -> list[tuple[str, str]]:
+    """Aligned (policy_name, action) per finding; default-allow when clean."""
+    reasons: list[tuple[str, str]] = []
+    for f in findings:
+        sig = finding_signals(graph, f)
+        hits = [(p.name, p.action) for p in load_policies() if policy_triggers(p, sig)]
+        hits.sort(key=lambda h: _ORDER.index(Verdict(h[1])), reverse=True)
+        reasons.append(hits[0] if hits else ("allow-by-default", "ALLOW"))
+    return reasons

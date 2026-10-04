@@ -19,15 +19,20 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import queue
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+import anyio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import networkx as nx
 
+from crosstoolguard.detection.correlation import analyze_with_graph
 from crosstoolguard.gateway.schemas import DataClass, Event, EventType, ToolCall, Trust, Verdict
 from crosstoolguard.gateway.session import ensure_session
 from crosstoolguard.gateway.transport import call_upstream, list_tools
-from crosstoolguard.policy.engine import decide_for_session
+from crosstoolguard.policy.engine import decide_for_session, reasons_for
+from crosstoolguard.policy.explain import explain_finding
 from crosstoolguard.provenance.events import classify_content, hash_arguments, redact
 from crosstoolguard.registry.capabilities import sensitivity_for_path
 
@@ -41,6 +46,29 @@ SESSION_EVENTS: dict[str, list[Event]] = {}
 SESSION_LAST_OUTPUT: dict[str, str] = {}
 APPROVALS: set[str] = set()
 _EVENT_CAP = 200
+
+
+class _Hub:
+    """Fan-out for WS subscribers; sync-safe via Queue (see /ws/events)."""
+
+    def __init__(self) -> None:
+        self.queues: list[queue.Queue] = []
+
+    def subscribe(self) -> queue.Queue:
+        q: queue.Queue = queue.Queue()
+        self.queues.append(q)
+        return q
+
+    def unsubscribe(self, q: queue.Queue) -> None:
+        if q in self.queues:
+            self.queues.remove(q)
+
+    def publish(self, message: dict) -> None:
+        for q in self.queues:
+            q.put(message)
+
+
+HUB = _Hub()
 
 
 def is_privileged(tool: str) -> bool:
@@ -60,6 +88,7 @@ def _log_event(event: Event) -> None:
 def _remember(session_id: str, event: Event) -> None:
     SESSION_EVENTS.setdefault(session_id, []).append(event)
     SESSION_EVENTS[session_id] = SESSION_EVENTS[session_id][-_EVENT_CAP:]
+    HUB.publish(event.model_dump(mode="json"))
 
 
 def _record_call(req: ToolCall, session_id: str) -> Event:
@@ -136,3 +165,50 @@ def grant_approval(body: dict) -> dict:
     aid = body.get("approval_id", "")
     APPROVALS.add(aid)
     return {"granted": True, "approval_id": aid}
+
+
+@app.get("/api/graph")
+def api_graph(session: str) -> dict:
+    """Attack graph + suspicious paths for a session (dashboard contract)."""
+    from crosstoolguard.graph.builder import build
+
+    events = SESSION_EVENTS.get(session, [])
+    graph = build(events) if events else nx.DiGraph()
+    _, findings = analyze_with_graph(events) if events else (graph, [])
+    nodes = [{"id": n, **{k: v for k, v in d.items()}} for n, d in graph.nodes(data=True)]
+    edges = [{"source": u, "target": v, **e} for u, v, e in graph.edges(data=True)]
+    paths = [{"pattern": f.pattern, "severity": f.severity, "risk": round(f.risk, 3),
+              "tools": f.tool_sequence, "node_ids": f.path} for f in findings]
+    return {"nodes": nodes, "edges": edges, "paths": paths}
+
+
+@app.get("/api/alerts")
+def api_alerts(session: str) -> dict:
+    """Ranked findings with NL explanations for a session."""
+    events = SESSION_EVENTS.get(session, [])
+    if not events:
+        return {"alerts": []}
+    graph, findings = analyze_with_graph(events)
+    alerts = []
+    for finding, (policy, action) in zip(findings, reasons_for(graph, findings)):
+        alerts.append({"pattern": finding.pattern, "severity": finding.severity,
+                       "risk": round(finding.risk, 3), "tools": finding.tool_sequence,
+                       "policy": policy, "verdict": action,
+                       "explanation": explain_finding(graph, finding, verdict=action, policy=policy)})
+    return {"alerts": alerts}
+
+
+@app.websocket("/ws/events")
+async def ws_events(websocket: WebSocket) -> None:
+    """Live event stream (polled fan-out; 50 ms cadence)."""
+    await websocket.accept()
+    q = HUB.subscribe()
+    try:
+        while True:
+            await anyio.sleep(0.05)
+            while not q.empty():
+                await websocket.send_json(q.get_nowait())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        HUB.unsubscribe(q)
