@@ -1,11 +1,17 @@
 """MCP proxy — sole enforcement point between agent and MCP servers.
 
 Modes (env MODE, read per request so tests can flip it):
-- monitor:   log the event, ALLOW everything (Sidecar bootstrap).
-- enforcing: ask policy, BLOCK/APPROVAL win; fail-closed on any error.
+- monitor:   log events, ALLOW everything (Sidecar bootstrap).
+- enforcing: record call + output events per session, correlate the
+  session history (Task 6), enforce the Task 7 policy verdict.
 
-Fail-closed: policy exception/timeout → BLOCK when the tool is privileged
-(EXTERNAL_TRANSFER etc.), else MONITOR. Never silent ALLOW (threat-model §5).
+Fail-closed: correlation/policy errors → BLOCK privileged tools, else
+MONITOR. Never silent ALLOW (threat-model §5).
+
+Parent heuristic v1: a call's parent is the session's most recent tool
+output (temporal proximity). Explicit caller-supplied parents are the
+future API; over-linking is acceptable because findings still require
+pattern + risk agreement, not mere adjacency.
 """
 
 from __future__ import annotations
@@ -18,36 +24,69 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from crosstoolguard.gateway.schemas import Event, EventType, ToolCall, Verdict
+from crosstoolguard.gateway.schemas import DataClass, Event, EventType, ToolCall, Trust, Verdict
 from crosstoolguard.gateway.session import ensure_session
 from crosstoolguard.gateway.transport import call_upstream, list_tools
+from crosstoolguard.policy.engine import decide_for_session
+from crosstoolguard.provenance.events import classify_content, hash_arguments, redact
+from crosstoolguard.registry.capabilities import sensitivity_for_path
 
 app = FastAPI(title="CrossToolGuard proxy")
 
 # Minimal privilege map until Task 2 capability taxonomy lands.
 PRIVILEGED_TOOLS = {"upload_file"}
 
+# Bounded per-session memory (M2-friendly): last 200 events per session.
+SESSION_EVENTS: dict[str, list[Event]] = {}
+SESSION_LAST_OUTPUT: dict[str, str] = {}
+APPROVALS: set[str] = set()
+_EVENT_CAP = 200
+
 
 def is_privileged(tool: str) -> bool:
     return tool in PRIVILEGED_TOOLS
 
 
-def _stub_decide(event: Event) -> Verdict:
-    """Placeholder policy: deny external-transfer tools, allow the rest.
-
-    Task 7 replaces this with the versioned YAML policy engine
-    (deny-override). Kept deliberately dumb so Task 1 proves the
-    enforcement plumbing, not detection quality.
-    """
-    if is_privileged(event.tool):
-        return Verdict.BLOCK
-    return Verdict.ALLOW
+def approval_id_for(session_id: str, server: str, tool: str, args_hash: str) -> str:
+    return hashlib.sha256(f"{session_id}|{server}|{tool}|{args_hash}".encode()).hexdigest()[:16]
 
 
 def _log_event(event: Event) -> None:
     path = os.getenv("EVENTS_PATH", "events.jsonl")
     with open(path, "a") as fh:
         fh.write(event.model_dump_json() + "\n")
+
+
+def _remember(session_id: str, event: Event) -> None:
+    SESSION_EVENTS.setdefault(session_id, []).append(event)
+    SESSION_EVENTS[session_id] = SESSION_EVENTS[session_id][-_EVENT_CAP:]
+
+
+def _record_call(req: ToolCall, session_id: str) -> Event:
+    data_class = DataClass.PUBLIC
+    for value in req.arguments.values():
+        if sensitivity_for_path(str(value)) == "SECRET":
+            data_class = DataClass.SECRET
+            break
+    event = Event(event_id=f"e-{uuid.uuid4().hex[:8]}", timestamp=datetime.now(timezone.utc),
+                  session_id=session_id, server=req.server, tool=req.tool,
+                  event_type=EventType.TOOL_CALL, trust=Trust.MED,
+                  data_class=data_class, args_hash=hash_arguments(req.arguments),
+                  parent_id=SESSION_LAST_OUTPUT.get(session_id))
+    _remember(session_id, event)
+    _log_event(event)
+    return event
+
+
+def _record_output(req: ToolCall, session_id: str, call_event: Event, result: str) -> None:
+    event = Event(event_id=f"e-{uuid.uuid4().hex[:8]}", timestamp=datetime.now(timezone.utc),
+                  session_id=session_id, server=req.server, tool=req.tool,
+                  event_type=EventType.TOOL_OUTPUT, trust=Trust.LOW,
+                  data_class=DataClass(classify_content(result)),
+                  output_preview=redact(result)[:500], parent_id=call_event.event_id)
+    _remember(session_id, event)
+    _log_event(event)
+    SESSION_LAST_OUTPUT[session_id] = event.event_id
 
 
 @app.get("/healthz")
@@ -63,27 +102,37 @@ def tools_list() -> dict:
 @app.post("/tools/call")
 def tools_call(req: ToolCall) -> dict:
     session_id = ensure_session(req.session_id)
-    args_hash = hashlib.sha256(json.dumps(req.arguments, sort_keys=True).encode()).hexdigest()
-    call_event = Event(
-        event_id=f"e-{uuid.uuid4().hex[:8]}",
-        timestamp=datetime.now(timezone.utc),
-        session_id=session_id,
-        server=req.server,
-        tool=req.tool,
-        event_type=EventType.TOOL_CALL,
-        args_hash=args_hash,
-    )
-    _log_event(call_event)
+    call_event = _record_call(req, session_id)
 
     if os.getenv("MODE", "monitor") != "enforcing":
         result = call_upstream(req.server, req.tool, req.arguments)
+        _record_output(req, session_id, call_event, result)
         return {"verdict": Verdict.ALLOW.value, "result": result, "reason": "monitor: log only"}
 
     try:
-        verdict = _stub_decide(call_event)
+        verdict = decide_for_session(SESSION_EVENTS[session_id])
     except Exception:
         verdict = Verdict.BLOCK if is_privileged(req.tool) else Verdict.MONITOR
+
     if verdict == Verdict.BLOCK:
-        return {"verdict": verdict.value, "result": None, "reason": "stub-policy: privileged tool denied"}
+        return {"verdict": verdict.value, "result": None, "reason": "policy: secret-never-external"}
+    if verdict in (Verdict.APPROVAL, Verdict.QUARANTINE):
+        aid = approval_id_for(session_id, req.server, req.tool, call_event.args_hash)
+        if req.approval_id in APPROVALS:
+            APPROVALS.discard(req.approval_id)
+            result = call_upstream(req.server, req.tool, req.arguments)
+            _record_output(req, session_id, call_event, result)
+            return {"verdict": Verdict.ALLOW.value, "result": result, "reason": "approval granted"}
+        return {"verdict": Verdict.APPROVAL.value, "result": None,
+                "approval_id": aid, "reason": "policy: untrusted-to-privileged"}
     result = call_upstream(req.server, req.tool, req.arguments)
-    return {"verdict": verdict.value, "result": result, "reason": "stub-policy"}
+    _record_output(req, session_id, call_event, result)
+    return {"verdict": verdict.value, "result": result, "reason": "policy"}
+
+
+@app.post("/approvals/grant")
+def grant_approval(body: dict) -> dict:
+    """Human-in-the-loop seam (dashboard calls this in Task 8). One-shot."""
+    aid = body.get("approval_id", "")
+    APPROVALS.add(aid)
+    return {"granted": True, "approval_id": aid}

@@ -1,0 +1,21 @@
+# Policy set v1 — deny-override, versioned (plan G7).
+# Conditions are evaluated against finding signals (evaluator.py):
+#   data_involved: finding touches classified data (SECRET | CREDENTIAL)
+#   external_sink: chain reaches EXTERNAL_TRANSFER capability
+#   low_trust_instruction: LOW-trust INSTRUCTION node on the path
+#   privileged_target: PRIVILEGED tool on the path
+policies:
+  - name: secret-never-external
+    version: 1
+    condition: {data_involved: [SECRET, CREDENTIAL], external_sink: true}
+    action: BLOCK
+
+  - name: untrusted-to-privileged
+    version: 1
+    condition: {low_trust_instruction: true, privileged_target: true}
+    action: APPROVAL
+
+  - name: suspicious-tool-chain
+    version: 1
+    condition: {capability_chain: [FILE_READ, STORE, EXTERNAL_TRANSFER]}
+    action: BLOCK

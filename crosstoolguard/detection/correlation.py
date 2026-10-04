@@ -53,7 +53,7 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
                                type=EdgeType.INFLUENCES.value)
 
 
-def analyze(events: list[Event]) -> list[Finding]:
+def analyze_with_graph(events: list[Event]) -> tuple[nx.DiGraph, list[Finding]]:
     graph = build(events)
     _enrich_instructions(graph, events)
     findings: list[Finding] = []
@@ -72,4 +72,9 @@ def analyze(events: list[Event]) -> list[Finding]:
             seen.add(key)
             findings.append(Finding(pattern.name, pattern.severity, seq,
                                     score_path(graph, path, [pattern.severity]), path))
-    return sorted(findings, key=lambda f: f.risk, reverse=True)
+    findings.sort(key=lambda f: f.risk, reverse=True)
+    return graph, findings
+
+
+def analyze(events: list[Event]) -> list[Finding]:
+    return analyze_with_graph(events)[1]

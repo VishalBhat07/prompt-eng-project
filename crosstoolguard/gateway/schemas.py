@@ -66,3 +66,4 @@ class ToolCall(BaseModel):
     server: str
     tool: str
     arguments: dict = Field(default_factory=dict)
+    approval_id: str | None = None  # Task 7: present a granted approval
