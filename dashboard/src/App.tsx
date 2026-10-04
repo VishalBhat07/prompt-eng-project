@@ -1,19 +1,24 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Shell from './components/Shell';
 import Home from './pages/Home';
-import Stub from './pages/Stub';
+import Sessions from './pages/Sessions';
+import GraphExplorer from './pages/GraphExplorer';
+import Findings from './pages/Findings';
+import Approvals from './pages/Approvals';
+import Benchmark from './pages/Benchmark';
+import Demo from './pages/Demo';
 
 const router = createBrowserRouter([
   {
     element: <Shell />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/sessions', element: <Stub name="Sessions" /> },
-      { path: '/graph', element: <Stub name="Graph explorer" /> },
-      { path: '/findings', element: <Stub name="Findings" /> },
-      { path: '/approvals', element: <Stub name="Approval queue" /> },
-      { path: '/benchmark', element: <Stub name="Benchmark" /> },
-      { path: '/demo', element: <Stub name="Demo runner" /> },
+      { path: '/sessions', element: <Sessions /> },
+      { path: '/graph', element: <GraphExplorer /> },
+      { path: '/findings', element: <Findings /> },
+      { path: '/approvals', element: <Approvals /> },
+      { path: '/benchmark', element: <Benchmark /> },
+      { path: '/demo', element: <Demo /> },
     ],
   },
 ]);

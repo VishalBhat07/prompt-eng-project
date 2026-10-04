@@ -1,0 +1,208 @@
+{
+  "session": "S-DEMO",
+  "nodes": [
+    {
+      "id": "tool:read_file:e1",
+      "type": "TOOL",
+      "session_id": "S-DEMO",
+      "timestamp": "2026-10-04T12:52:04.702953+00:00",
+      "tool": "read_file",
+      "server": "filesystem-mcp",
+      "capabilities": [
+        "FILE_READ"
+      ]
+    },
+    {
+      "id": "server:filesystem-mcp",
+      "type": "SERVER",
+      "session_id": "S-DEMO",
+      "server": "filesystem-mcp"
+    },
+    {
+      "id": "data:SECRET:e1",
+      "type": "DATA",
+      "session_id": "S-DEMO",
+      "timestamp": "2026-10-04T12:52:04.702953+00:00",
+      "data_class": "SECRET",
+      "origin_tool": "read_file",
+      "origin_capabilities": [
+        "FILE_READ"
+      ]
+    },
+    {
+      "id": "tool:store_file:e2",
+      "type": "TOOL",
+      "session_id": "S-DEMO",
+      "timestamp": "2026-10-04T12:52:05.702953+00:00",
+      "tool": "store_file",
+      "server": "storage-mcp",
+      "capabilities": [
+        "STORE"
+      ]
+    },
+    {
+      "id": "server:storage-mcp",
+      "type": "SERVER",
+      "session_id": "S-DEMO",
+      "server": "storage-mcp"
+    },
+    {
+      "id": "tool:store_file:e3",
+      "type": "TOOL",
+      "session_id": "S-DEMO",
+      "timestamp": "2026-10-04T12:52:06.702953+00:00",
+      "tool": "store_file",
+      "server": "storage-mcp",
+      "capabilities": [
+        "STORE"
+      ]
+    },
+    {
+      "id": "tool:upload_file:e4",
+      "type": "TOOL",
+      "session_id": "S-DEMO",
+      "timestamp": "2026-10-04T12:52:07.702953+00:00",
+      "tool": "upload_file",
+      "server": "storage-mcp",
+      "capabilities": [
+        "EXTERNAL_TRANSFER",
+        "NETWORK_SEND",
+        "PRIVILEGED"
+      ]
+    },
+    {
+      "id": "destination:external",
+      "type": "DESTINATION",
+      "session_id": "S-DEMO",
+      "name": "external"
+    }
+  ],
+  "edges": [
+    {
+      "source": "tool:read_file:e1",
+      "target": "data:SECRET:e1",
+      "type": "GENERATES"
+    },
+    {
+      "source": "tool:read_file:e1",
+      "target": "tool:store_file:e2",
+      "type": "INFLUENCES"
+    },
+    {
+      "source": "server:filesystem-mcp",
+      "target": "tool:read_file:e1",
+      "type": "INVOKES"
+    },
+    {
+      "source": "data:SECRET:e1",
+      "target": "tool:store_file:e2",
+      "type": "FLOWS_TO"
+    },
+    {
+      "source": "tool:store_file:e2",
+      "target": "tool:store_file:e3",
+      "type": "INFLUENCES"
+    },
+    {
+      "source": "server:storage-mcp",
+      "target": "tool:store_file:e2",
+      "type": "INVOKES"
+    },
+    {
+      "source": "server:storage-mcp",
+      "target": "tool:store_file:e3",
+      "type": "INVOKES"
+    },
+    {
+      "source": "server:storage-mcp",
+      "target": "tool:upload_file:e4",
+      "type": "INVOKES"
+    },
+    {
+      "source": "tool:store_file:e3",
+      "target": "tool:upload_file:e4",
+      "type": "INFLUENCES"
+    },
+    {
+      "source": "tool:upload_file:e4",
+      "target": "destination:external",
+      "type": "SENDS"
+    }
+  ],
+  "paths": [
+    {
+      "pattern": "secret_exfiltration",
+      "severity": "CRITICAL",
+      "risk": 1.0,
+      "tools": [
+        "read_file",
+        "store_file",
+        "upload_file"
+      ],
+      "node_ids": [
+        "data:SECRET:e1",
+        "tool:store_file:e2",
+        "tool:store_file:e3",
+        "tool:upload_file:e4",
+        "destination:external"
+      ],
+      "policy": "secret-never-external",
+      "verdict": "BLOCK",
+      "explanation": "The agent accessed Sensitive data via `read_file`. The resulting data was subsequently passed to `store_file`, then consumed by `upload_file`, which has external-transfer capability. The combined path (read_file \u2192 store_file \u2192 upload_file) matches `secret_exfiltration` (CRITICAL, risk 1.00), violating the `secret-never-external` policy, so the final action was BLOCKED."
+    }
+  ],
+  "events": [
+    {
+      "event_id": "e1",
+      "timestamp": "2026-10-04T12:52:04.702953Z",
+      "session_id": "S-DEMO",
+      "server": "filesystem-mcp",
+      "tool": "read_file",
+      "event_type": "TOOL_OUTPUT",
+      "trust": "MED",
+      "data_class": "SECRET",
+      "args_hash": "h",
+      "output_preview": "config contents [database url]",
+      "parent_id": null
+    },
+    {
+      "event_id": "e2",
+      "timestamp": "2026-10-04T12:52:05.702953Z",
+      "session_id": "S-DEMO",
+      "server": "storage-mcp",
+      "tool": "store_file",
+      "event_type": "TOOL_CALL",
+      "trust": "MED",
+      "data_class": "PUBLIC",
+      "args_hash": "h",
+      "output_preview": "",
+      "parent_id": "e1"
+    },
+    {
+      "event_id": "e3",
+      "timestamp": "2026-10-04T12:52:06.702953Z",
+      "session_id": "S-DEMO",
+      "server": "storage-mcp",
+      "tool": "store_file",
+      "event_type": "TOOL_OUTPUT",
+      "trust": "MED",
+      "data_class": "PUBLIC",
+      "args_hash": "h",
+      "output_preview": "",
+      "parent_id": "e2"
+    },
+    {
+      "event_id": "e4",
+      "timestamp": "2026-10-04T12:52:07.702953Z",
+      "session_id": "S-DEMO",
+      "server": "storage-mcp",
+      "tool": "upload_file",
+      "event_type": "TOOL_CALL",
+      "trust": "MED",
+      "data_class": "PUBLIC",
+      "args_hash": "h",
+      "output_preview": "",
+      "parent_id": "e3"
+    }
+  ]
+}
