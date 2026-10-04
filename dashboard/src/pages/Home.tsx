@@ -144,12 +144,18 @@ export default function Home() {
         </p>
       </section>
 
-      <footer style={{
-        borderTop: '1px solid var(--line)', padding: '28px 0 8px',
-        display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--faint)',
-      }}>
-        <span>VeriGraph — graph-based runtime defense for tool-using agents</span>
-        <span className="mono">repo · docs · course project</span>
+      <footer style={{ borderTop: '1px solid var(--line)', padding: '28px 0 8px' }}>
+        <pre aria-hidden className="mono sheen" style={{
+          fontSize: 9, lineHeight: 1.35, margin: '0 0 20px', overflowX: 'hidden', userSelect: 'none',
+        }}>{`#...# ##### ####. ##### .#### ####. ..#.. ####. #...#
+#...# #.... #...# ..#.. #.... #...# .#.#. #...# #...#
+#...# ####. ####. ..#.. #.### ####. ##### ####. #####
+.#.#. #.... #.#.. ..#.. #...# #.#.. #...# #.... #...#
+..#.. ##### #..#. ##### .###. #..#. #...# #.... #...#`}</pre>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--faint)' }}>
+          <span>VeriGraph — graph-based runtime defense for tool-using agents</span>
+          <span className="mono">repo · docs · course project</span>
+        </div>
       </footer>
     </div>
   );
