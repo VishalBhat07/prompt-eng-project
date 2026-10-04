@@ -66,20 +66,22 @@ export default function GraphExplorer() {
     const laneIdx = new Map<string, number>();
     return visible.map((n, i) => {
       const lane = LANE[n.type] ?? 1;
-      const k = `${lane}-${laneIdx.get(String(lane)) ?? 0}`;
-      laneIdx.set(String(lane), (laneIdx.get(String(lane)) ?? 0) + 1);
-      const order = parseInt(k.split('-')[1], 10);
+      const order = laneIdx.get(String(lane)) ?? 0;
+      laneIdx.set(String(lane), order + 1);
       const pos = radial
-        ? { x: 400 + 280 * Math.cos((2 * Math.PI * i) / Math.max(1, visible.length)), y: 300 + 280 * Math.sin((2 * Math.PI * i) / Math.max(1, visible.length)) }
-        : { x: order * 210, y: lane * 175 };
+        ? { x: 420 + 300 * Math.cos((2 * Math.PI * i) / Math.max(1, visible.length)), y: 320 + 300 * Math.sin((2 * Math.PI * i) / Math.max(1, visible.length)) }
+        : { x: order * 220, y: lane * 180 };
       const dim = (focus && !focus.includes(n.id)) || (hovered && hovered !== n.id && !adj.get(hovered)?.has(n.id));
+      const isHot = hot.has(n.id);
       return {
         id: n.id, position: pos,
         data: { label: label(n) },
         style: {
-          background: 'var(--bg-2)', color: 'var(--ink)',
-          border: hot.has(n.id) ? '3px solid var(--crit)' : '1px solid rgba(255,255,255,0.2)',
-          borderRadius: 8, padding: 8, fontSize: 12, opacity: dim ? 0.25 : 1,
+          background: isHot ? 'rgba(255,99,111,0.08)' : 'var(--bg-1)',
+          color: 'var(--ink)',
+          border: isHot ? '1.5px solid var(--crit)' : '1px solid var(--line)',
+          borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
+          fontFamily: 'var(--font-mono)', opacity: dim ? 0.22 : 1,
         },
       };
     });
@@ -89,77 +91,109 @@ export default function GraphExplorer() {
     .filter((e) => visIds.has(e.source) && visIds.has(e.target))
     .map((e, i) => ({
       id: `e${i}`, source: e.source, target: e.target, label: e.type,
+      labelStyle: { fill: 'var(--faint)', fontSize: 10, fontFamily: 'var(--font-mono)' },
+      labelBgStyle: { fill: 'var(--bg-0)' },
       animated: e.type === 'SENDS' || e.type === 'FLOWS_TO',
-      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : '#666' },
+      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'rgba(255,255,255,0.22)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2 },
     })), [data, visIds]);
 
   const sel = data?.nodes.find((n) => n.id === selected) ?? null;
   const selFindings = data?.paths.filter((p) => selected && p.node_ids.includes(selected)) ?? [];
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <h1 style={{ margin: 0 }}>Graph explorer</h1>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div>
+      <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
+        <span className="eyebrow">Inspect</span>
+        <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Graph explorer</h1>
+        <p className="sub" style={{ fontSize: 16 }}>One graph per session. The red path is the attack — everything else is context.</p>
+      </header>
+
+      <div style={{
+        display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
+        padding: '12px 0', borderTop: '1px solid var(--line)', fontSize: 13.5, color: 'var(--muted)',
+      }}>
         <label>Session <input className="mono" value={session}
-          onChange={(e) => setParams({ session: e.target.value })} style={{ width: 140 }} /></label>
+          onChange={(e) => setParams({ session: e.target.value })} style={{ width: 130, marginLeft: 6 }} /></label>
         <button onClick={() => setRadial((r) => !r)}>{radial ? 'Swimlanes' : 'Radial'}</button>
-        <label><input type="checkbox" checked={suspOnly} onChange={(e) => setSuspOnly(e.target.checked)} /> Suspicious only</label>
-        {TYPES.map((t) => (
-          <label key={t} style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={types.has(t)}
-              onChange={() => setTypes((s) => { const n = new Set(s); if (n.has(t)) n.delete(t); else n.add(t); return n; })} /> {t}
-          </label>
-        ))}
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input type="checkbox" checked={suspOnly} onChange={(e) => setSuspOnly(e.target.checked)} /> Suspicious only
+        </label>
+        <span style={{ display: 'flex', gap: 10 }}>
+          {TYPES.map((t) => (
+            <label key={t} style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 12.5 }}>
+              <input type="checkbox" checked={types.has(t)}
+                onChange={() => setTypes((s) => { const n = new Set(s); if (n.has(t)) n.delete(t); else n.add(t); return n; })} /> {t}
+            </label>
+          ))}
+        </span>
       </div>
-      <div style={{ height: 480, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 }}>
-        <ReactFlow nodes={flowNodes} edges={flowEdges} fitView
-          onNodeClick={(_, n) => { setSelected(n.id); setFocus(null); }}
-          onNodeMouseEnter={(_, n) => setHovered(n.id)}
-          onNodeMouseLeave={() => setHovered(null)}>
-          <Background color="rgba(255,255,255,0.06)" />
-          <Controls /><MiniMap pannable zoomable />
-        </ReactFlow>
+
+      <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-0)' }}>
+        <div style={{ height: 560 }}>
+          <ReactFlow nodes={flowNodes} edges={flowEdges} fitView
+            onNodeClick={(_, n) => { setSelected(n.id); setFocus(null); }}
+            onNodeMouseEnter={(_, n) => setHovered(n.id)}
+            onNodeMouseLeave={() => setHovered(null)}>
+            <Background color="rgba(255,255,255,0.05)" gap={28} />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable style={{ background: 'var(--bg-1)' }} />
+          </ReactFlow>
+        </div>
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'center', padding: '12px 16px',
+          borderTop: '1px solid var(--line)',
+        }} aria-label="time replay">
+          <button onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'pause replay' : 'play replay'}>
+            {playing ? '❚❚' : '▶'}
+          </button>
+          <input type="range" min={0} max={Math.max(0, times.length - 1)} value={Math.max(0, tick)}
+            onChange={(e) => { setTick(Number(e.target.value)); setPlaying(false); }} style={{ flex: 1 }} aria-label="replay position" />
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="replay speed">
+            <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
+          </select>
+          <span className="mono" style={{ fontSize: 12, color: 'var(--faint)', minWidth: 64 }}>
+            {tick >= 0 ? times[tick]?.slice(11, 19) : ''}
+          </span>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} aria-label="time replay">
-        <button onClick={() => setPlaying((p) => !p)}>{playing ? 'Pause' : 'Play'}</button>
-        <input type="range" min={0} max={Math.max(0, times.length - 1)} value={Math.max(0, tick)}
-          onChange={(e) => { setTick(Number(e.target.value)); setPlaying(false); }} style={{ flex: 1 }} />
-        <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="replay speed">
-          <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
-        </select>
-        <span className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{tick >= 0 ? times[tick]?.slice(11, 19) : ''}</span>
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => setFocus(null)}>Clear focus</button>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
         {(data?.paths ?? []).map((p) => (
-          <button key={p.pattern} onClick={() => setFocus(p.node_ids)}
-            style={{ borderColor: 'var(--crit)' }}>
-            Focus: {p.pattern} <RiskMeter score={p.risk} />
+          <button key={p.pattern} onClick={() => setFocus(focus ? null : p.node_ids)}
+            style={{ borderColor: focus ? 'var(--accent)' : 'var(--crit)' }}>
+            {focus ? 'Clear focus' : 'Focus'}: <span className="mono">{p.pattern}</span> <RiskMeter score={p.risk} />
           </button>
         ))}
       </div>
+
       {sel && (
-        <aside className="card" aria-label="node details" style={{ padding: 16 }}>
-          <h3 className="mono" style={{ marginTop: 0 }}>{label(sel)}</h3>
-          <div style={{ fontSize: 14, color: 'var(--muted)' }}>
-            session {String(sel.session_id ?? session)} · {String(sel.timestamp ?? '').slice(11, 19)}
+        <aside aria-label="node details" style={{
+          marginTop: 16, border: '1px solid var(--line)', borderRadius: 12, padding: 20, maxWidth: 640,
+        }}>
+          <div className="mono" style={{ fontSize: 15, fontWeight: 600 }}>{label(sel)}</div>
+          <div className="mono" style={{ fontSize: 12.5, color: 'var(--faint)', marginTop: 6 }}>
+            {String(sel.session_id ?? session)} · {String(sel.timestamp ?? '').slice(11, 19)}
             {sel.trust ? ` · trust ${String(sel.trust)}` : ''}
             {sel.data_class ? ` · ${String(sel.data_class)}` : ''}
           </div>
           {selFindings.map((f) => (
-            <p key={f.pattern}><SeverityBadge level={f.severity as 'CRITICAL' | 'HIGH'} /> {f.pattern} <RiskMeter score={f.risk} /></p>
+            <p key={f.pattern} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <SeverityBadge level={f.severity as 'CRITICAL' | 'HIGH'} /> <RiskMeter score={f.risk} />
+            </p>
           ))}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button onClick={() => navigator.clipboard?.writeText(sel.id).catch(() => {})}>Copy ID</button>
             <button onClick={() => setSelected(null)}>Close</button>
           </div>
         </aside>
       )}
-      <details>
-        <summary style={{ cursor: 'pointer', color: 'var(--muted)' }}>Node list (keyboard access)</summary>
+
+      <details style={{ marginTop: 16 }}>
+        <summary style={{ cursor: 'pointer', color: 'var(--faint)', fontSize: 13.5 }}>Node list (keyboard access)</summary>
         {visible.map((n) => (
           <button key={n.id} onClick={() => setSelected(n.id)}
-            style={{ display: 'block', margin: '4px 0', fontSize: 13 }} className="mono">{label(n)}</button>
+            style={{ display: 'block', margin: '6px 0', fontSize: 13, border: 'none', padding: '4px 0', color: 'var(--muted)' }}
+            className="mono">{label(n)}</button>
         ))}
       </details>
     </div>
