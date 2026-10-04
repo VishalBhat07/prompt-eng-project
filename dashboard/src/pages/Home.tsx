@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import BlurText from '../components/bits/BlurText';
+import CountUp from '../components/bits/CountUp';
 
 const FEED = [
   'S-7b68 · read_file → ALLOW',
@@ -35,21 +36,23 @@ const STAGES: [string, string][] = [
 function Proof() {
   const [d, setD] = useState<{ detection_rate: number; false_positive_rate: number; latency: { p95_s: number } } | null>(null);
   useEffect(() => { fetch('/data/benchmark.json').then((r) => r.json()).then(setD).catch(() => {}); }, []);
-  const stats: [string, string, string][] = [
-    ['Detection', d ? `${Math.round(d.detection_rate * 100)}%` : '—', '8 of 8 targeted attacks'],
-    ['False positives', d ? `${Math.round(d.false_positive_rate * 100)}%` : '—', '0 of 9 benign flagged'],
-    ['Cross-tool-only catches', '7', 'invisible to single-tool checks'],
-    ['Analyze p95', d ? `${Math.round(d.latency.p95_s * 1000)} ms` : '—', 'of a 150 ms budget'],
+  const stats: [string, number, string, string][] = [
+    ['Detection', d ? Math.round(d.detection_rate * 100) : 0, '%', '8 of 8 targeted attacks'],
+    ['False positives', d ? Math.round(d.false_positive_rate * 100) : 0, '%', '0 of 9 benign flagged'],
+    ['Cross-tool-only catches', 7, '', 'invisible to single-tool checks'],
+    ['Analyze p95', d ? Math.round(d.latency.p95_s * 1000) : 0, ' ms', 'of a 150 ms budget'],
   ];
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
-        {stats.map(([k, v, sub], i) => (
+        {stats.map(([k, v, suffix, sub], i) => (
           <div key={k} style={{
             padding: '28px 24px', borderLeft: i === 0 ? 'none' : '1px solid var(--line)',
           }}>
             <div style={{ fontSize: 13, color: 'var(--muted)', letterSpacing: '0.04em' }}>{k}</div>
-            <div className="mono" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', margin: '4px 0' }}>{v}</div>
+            <div className="mono" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', margin: '4px 0' }}>
+              <CountUp to={v} duration={1.4} />{suffix}
+            </div>
             <div style={{ fontSize: 13.5, color: 'var(--faint)' }}>{sub}</div>
           </div>
         ))}
