@@ -9,6 +9,8 @@
 **Tech Stack:** Python 3.11+, FastAPI, Pydantic v2, MCP Python SDK (pin version), NetworkX (MVP graph), SQLite+WAL (MVP store), sentence-transformers `all-MiniLM-L6-v2` local (80MB, M2-safe) + regex + Groq LLM-judge (free tier, no OpenAI needed), React + TypeScript + React Flow (dashboard), Docker Compose, pytest.
 
 > **SOLO + MacBook Air M2 8GB revision (2026-10-04):** solo build, single-threaded order Tasks 0→11 (no parallel tracks). Agent + LLM-judge via **Groq free tier** (`llama-3.3-70b-versatile` for agent, `llama-3.1-8b-instant` for judge — fast, 0 local RAM). Local fallback ONLY `ollama llama3.2:3b` (~2GB) + MiniLM embeddings. Do NOT run 7B/8B local models alongside Docker + browser on 8GB — will swap. Enforcement: start `monitor` (Sidecar) Tasks 0–5, flip to `enforcing` at Task 7. Evaluation stays FULL (baselines + ablation A–E) per user choice.
+>
+> **2026-10-04 decision:** Task 8 dashboard is MVP-functional only. A complete polished website (Dashboard v2) is deferred until after Tasks 9–10 evaluation, per user request for an extremely polished final site.
 
 ## Global Constraints
 

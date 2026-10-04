@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import networkx as nx
 
-from crosstoolguard.analyzer.semantic import classify
+from crosstoolguard.analyzer.semantic import classify, compose_score
 from crosstoolguard.detection.patterns import load_patterns, pattern_matches
 from crosstoolguard.detection.risk import score_path
 from crosstoolguard.gateway.schemas import Event, EventType
@@ -32,14 +32,24 @@ class Finding:
     path: list[str]
 
 
+def _wire_instruction(graph: nx.DiGraph, nid: str, events: list[Event], anchor_id: str) -> None:
+    for child in events:
+        if child.parent_id == anchor_id and child.event_type == EventType.TOOL_CALL:
+            graph.add_edge(nid, f"tool:{child.tool}:{child.event_id}",
+                           type=EdgeType.INFLUENCES.value)
+
+
 def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
     """Add INSTRUCTION nodes for SUSPICIOUS tool outputs (semantic layer).
 
-    Only the label and score are stored — never raw output text.
+    Two routes: single outputs that classify SUSPICIOUS alone, and
+    distributed fragments that are weak alone but malicious composed
+    (sliding window over consecutive outputs, Task 9-F).
+    Only labels and scores are stored — never raw output text.
     """
-    for event in events:
-        if event.event_type != EventType.TOOL_OUTPUT or not event.output_preview:
-            continue
+    outputs = [e for e in events
+               if e.event_type == EventType.TOOL_OUTPUT and e.output_preview]
+    for event in outputs:
         if classify(event.output_preview) != "SUSPICIOUS":
             continue
         nid = f"instruction:{event.event_id}"
@@ -47,10 +57,24 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
                        timestamp=event.timestamp.isoformat(), trust="LOW",
                        origin_tool=event.tool,
                        origin_capabilities=sorted(extract_capabilities(event.tool, "")))
-        for child in events:
-            if child.parent_id == event.event_id and child.event_type == EventType.TOOL_CALL:
-                graph.add_edge(nid, f"tool:{child.tool}:{child.event_id}",
-                               type=EdgeType.INFLUENCES.value)
+        _wire_instruction(graph, nid, events, event.event_id)
+    for i in range(len(outputs)):
+        window = outputs[i:i + 3]
+        if len(window) < 2:
+            continue
+        if any(classify(o.output_preview) == "SUSPICIOUS" for o in window):
+            continue  # single-output route already handled these
+        if compose_score([o.output_preview for o in window]) < 0.8:
+            continue
+        anchor = window[-1]
+        nid = f"instruction:composed:{anchor.event_id}"
+        if nid in graph:
+            continue
+        graph.add_node(nid, type=NodeType.INSTRUCTION.value, session_id=anchor.session_id,
+                       timestamp=anchor.timestamp.isoformat(), trust="LOW",
+                       origin_tool=anchor.tool,
+                       origin_capabilities=sorted(extract_capabilities(anchor.tool, "")))
+        _wire_instruction(graph, nid, events, anchor.event_id)
 
 
 def analyze_with_graph(events: list[Event]) -> tuple[nx.DiGraph, list[Finding]]:

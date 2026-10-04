@@ -12,7 +12,7 @@ patterns:
     query: {source_class: SECRET, dest_cap: EXTERNAL_TRANSFER}
     stages:
       - {data_classification: SECRET}
-      - {capability: [STORE, TRANSFORM, DB_WRITE]}
+      - {capability: [STORE, TRANSFORM, DB_WRITE, FILE_WRITE]}
       - {capability: EXTERNAL_TRANSFER}
 
   - name: poisoned_instruction_chain
