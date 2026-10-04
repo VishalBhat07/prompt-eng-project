@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DepthText from '../components/bits/DepthText';
 
 const STEPS = [
   'read_file(credentials_example.txt) → SECRET collected … ALLOW',
@@ -21,25 +22,36 @@ export default function Demo() {
     return () => timers.forEach(clearTimeout);
   }, [running]);
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <h1 style={{ margin: 0 }}>Demo runner</h1>
-      <p style={{ color: 'var(--muted)' }}>
-        Scripted cred-exfil scenario (mocked events; same shape as the live backend).
-      </p>
+    <div>
+      <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
+        <span className="eyebrow">Classroom demo</span>
+        <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Demo runner</h1>
+        <p className="sub" style={{ fontSize: 16 }}>One click. Three tool calls. Watch the third one die.</p>
+      </header>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setRunning(true)} disabled={running}>
+        <button className="btn-primary" style={{ borderRadius: 8 }} onClick={() => setRunning(true)} disabled={running}>
           {running ? 'Running…' : 'Run attack scenario'}
         </button>
-        <button onClick={() => { setLog([]); setDone(false); }}>Reset demo</button>
+        <button onClick={() => { setLog([]); setDone(false); }}>Reset</button>
       </div>
-      <div className="card mono" style={{ padding: 16, minHeight: 130, fontSize: 15 }}>
-        {log.length === 0 && <span style={{ color: 'var(--muted)' }}>Press run.</span>}
+      <div className="mono" style={{
+        marginTop: 20, border: '1px solid var(--line)', borderRadius: 12,
+        padding: 20, minHeight: 140, fontSize: 14.5, lineHeight: 2,
+      }}>
+        {log.length === 0 && <span style={{ color: 'var(--faint)' }}>Press run.</span>}
         {log.map((l, i) => (
-          <div key={i} style={{ color: l.includes('BLOCK') ? 'var(--crit)' : 'var(--clean)' }}>{l}</div>
+          <div key={i} style={{ color: l.includes('BLOCK') ? 'var(--crit)' : 'var(--muted)' }}>{l}</div>
         ))}
       </div>
-      {done && <Link to="/graph?session=S-DEMO" style={{ color: 'var(--accent)', fontWeight: 700 }}>
-        Attack blocked — inspect the path in the graph explorer →</Link>}
+      {done && (
+        <div style={{ marginTop: 24 }}>
+          <DepthText text="Attack blocked." layers={5} depth={0.6} fontSize="clamp(30px,4vw,46px)"
+            fontWeight={700} faceColor="#fafafa" depthColor="#134e4a" tilt={8} shadow={false} />
+          <Link to="/graph?session=S-DEMO" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+            Inspect the path in the graph explorer →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
