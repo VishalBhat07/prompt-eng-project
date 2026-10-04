@@ -1,0 +1,45 @@
+# Capability taxonomy v1 — heuristic name/description matchers.
+# A tool gets every capability whose `any` pattern matches
+# "<name> <description>" (case-insensitive regex).
+# PRIVILEGED is derived, never matched directly (see capabilities.py).
+capabilities:
+  - FILE_READ
+  - FILE_WRITE
+  - DB_READ
+  - DB_WRITE
+  - NETWORK_READ
+  - NETWORK_SEND
+  - EXTERNAL_TRANSFER
+  - EMAIL_SEND
+  - CREDENTIAL_READ
+  - SHELL_EXEC
+  - TRANSFORM
+  - STORE
+  - SEARCH
+rules:
+  - capability: FILE_READ
+    any: ["read_file", "list_files", "\\bread\\b.*file", "resource.*read", "fetch.*file"]
+  - capability: FILE_WRITE
+    any: ["write_file", "delete_file", "\\bwrite\\b.*file"]
+  - capability: DB_READ
+    any: ["database.*read", "db.*read", "query.*record", "select.*from"]
+  - capability: DB_WRITE
+    any: ["database.*(write|insert)", "db.*(write|insert)", "export_csv"]
+  - capability: NETWORK_SEND
+    any: ["upload", "web\\.request", "webhook", "http.*(post|send)", "external.*transfer"]
+  - capability: EXTERNAL_TRANSFER
+    any: ["upload", "web\\.request", "webhook", "external.*transfer"]
+  - capability: NETWORK_READ
+    any: ["web\\.request", "fetch.*url", "download"]
+  - capability: EMAIL_SEND
+    any: ["email", "mail.*send", "send.*mail"]
+  - capability: CREDENTIAL_READ
+    any: ["\\.env", "id_rsa", "\\.pem", "credential", "secret.*(read|access)", "password", "api[_-]?key"]
+  - capability: SHELL_EXEC
+    any: ["shell", "exec(ute)?", "run.*command", "terminal"]
+  - capability: TRANSFORM
+    any: ["transform", "convert", "summar", "compress", "export"]
+  - capability: STORE
+    any: ["store", "\\bsave\\b", "stage", "database.*insert"]
+  - capability: SEARCH
+    any: ["\\bsearch\\b"]

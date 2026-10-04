@@ -1,0 +1,8 @@
+# Path/argument sensitivity map v1 — first sieve before Task 3's
+# full content classifier (regex + entropy + NER).
+# First matching rule wins; no match → PUBLIC.
+rules:
+  - pattern: "\\.env$|id_rsa|\\.pem$|credentials?\\.txt$"
+    data_class: SECRET
+  - pattern: "password|api[_-]?key|secret|token"
+    data_class: SECRET
