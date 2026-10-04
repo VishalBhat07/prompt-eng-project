@@ -101,7 +101,7 @@ input, select {
 table { font-size: 14.5px; }
 
 .btn-primary {
-  background: var(--ink) !important; color: #09090c !important;
+  background: var(--ink) !important; color: var(--bg-0) !important;
   border: none !important; font-weight: 650 !important; padding: 12px 22px !important;
 }
 .btn-primary:hover { opacity: 0.88; }
