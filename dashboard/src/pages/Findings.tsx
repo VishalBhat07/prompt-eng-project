@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiskMeter, SeverityBadge } from '../components/Severity';
-import TrueFocus from '../components/bits/TrueFocus';
 import { loadSession, type AttackPath } from '../data/provider';
 
 export default function Findings() {
@@ -43,10 +42,9 @@ export default function Findings() {
               </Link>
             </div>
             {open === p.pattern && (
-              <div style={{ marginTop: 12, maxWidth: 720, color: 'var(--muted)', fontSize: 15 }}>
-                <TrueFocus sentence={p.explanation} manualMode blurAmount={3}
-                  borderColor="#2dd4bf" glowColor="rgba(45,212,191,0.25)" />
-              </div>
+              <p style={{ marginTop: 12, maxWidth: 720, color: 'var(--muted)', fontSize: 15, lineHeight: 1.65 }}>
+                {p.explanation}
+              </p>
             )}
           </article>
         ))}

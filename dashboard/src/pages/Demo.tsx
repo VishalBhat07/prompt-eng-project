@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import DepthText from '../components/bits/DepthText';
 
 const STEPS = [
   'read_file(credentials_example.txt) → SECRET collected … ALLOW',
@@ -45,8 +44,9 @@ export default function Demo() {
       </div>
       {done && (
         <div style={{ marginTop: 24 }}>
-          <DepthText text="Attack blocked." layers={5} depth={0.6} fontSize="clamp(30px,4vw,46px)"
-            fontWeight={700} faceColor="#fafafa" depthColor="#134e4a" tilt={8} shadow={false} />
+          <div style={{ fontSize: 'clamp(28px,3.6vw,40px)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--crit)' }}>
+            Attack blocked.
+          </div>
           <Link to="/graph?session=S-DEMO" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
             Inspect the path in the graph explorer →
           </Link>
