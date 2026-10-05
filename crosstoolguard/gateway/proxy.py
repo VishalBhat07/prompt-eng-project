@@ -182,8 +182,16 @@ def api_agent_run(body: AgentRun) -> dict:
     """Playground: run a prompt end-to-end, return the enforced trace."""
     from crosstoolguard.gateway.agent_runner import run_task
 
-    return run_task(body.task, session_id=body.session_id,
-                    model=body.model, max_steps=body.max_steps)
+    return run_task(body.task, session_id=body.session_id, model=body.model,
+                    max_steps=body.max_steps, provider=body.provider)
+
+
+@app.get("/api/llm/providers")
+def api_llm_providers() -> dict:
+    """Configured providers + models (keys stay server-side)."""
+    from crosstoolguard.llm.providers import list_providers
+
+    return {"providers": list_providers()}
 
 
 @app.get("/api/graph")

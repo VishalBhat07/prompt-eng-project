@@ -10,10 +10,15 @@ Same shape as `/tools/list` (namespaced alias for the dashboard).
 
 ## `POST /api/agent/run`
 
-Playground: `{task, session_id?, model?, max_steps? (≤10)}` → full ReAct trace:
-`{session_id, steps: [{server, tool, arguments, verdict, observation, approval_id?}], halted, done, model}`.
+Playground: `{task, session_id?, provider?, model?, max_steps? (≤10)}` → full ReAct trace:
+`{session_id, steps: [{server, tool, arguments, verdict, observation, approval_id?}], halted, done, provider, model}`.
 Every step goes through the same enforce path as `/tools/call`. Halts on
-`BLOCK` / `APPROVAL` / `ERROR`. Single-user v1: server-side Groq key.
+`BLOCK` / `APPROVAL` / `ERROR`. Single-user v1: server-side keys.
+
+## `GET /api/llm/providers`
+
+`{providers: [{id, name, configured, models}]}` — configured means the
+server holds that provider's key. Keys never leave the server.
 
 ## `POST /tools/call`
 

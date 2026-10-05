@@ -12,4 +12,6 @@ structlog==24.4.0
 # Groq-first LLM (free tier, zero local RAM) + local .env loading
 groq==0.11.0
 python-dotenv==1.0.1
+openai==3.24.0
+anthropic==1.11.0
 pyyaml==6.0.2
