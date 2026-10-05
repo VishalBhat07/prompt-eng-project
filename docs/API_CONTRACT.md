@@ -4,6 +4,17 @@ Base: proxy origin (`http://localhost:8000`; Vite dev proxies `/api`, `/ws`).
 
 ## `GET /tools/list` → `{tools: [{server, tool, description}]}`
 
+## `GET /api/tools/list`
+
+Same shape as `/tools/list` (namespaced alias for the dashboard).
+
+## `POST /api/agent/run`
+
+Playground: `{task, session_id?, model?, max_steps? (≤10)}` → full ReAct trace:
+`{session_id, steps: [{server, tool, arguments, verdict, observation, approval_id?}], halted, done, model}`.
+Every step goes through the same enforce path as `/tools/call`. Halts on
+`BLOCK` / `APPROVAL` / `ERROR`. Single-user v1: server-side Groq key.
+
 ## `POST /tools/call`
 
 Body: `{session_id, server, tool, arguments, approval_id?}`

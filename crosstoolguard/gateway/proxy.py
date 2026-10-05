@@ -28,6 +28,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import networkx as nx
 
 from crosstoolguard.detection.correlation import analyze_with_graph
+from crosstoolguard.gateway.agent_runner import AgentRun
 from crosstoolguard.gateway.schemas import DataClass, Event, EventType, ToolCall, Trust, Verdict
 from crosstoolguard.gateway.session import ensure_session
 from crosstoolguard.gateway.transport import call_upstream, list_tools
@@ -128,9 +129,18 @@ def tools_list() -> dict:
     return {"tools": list_tools()}
 
 
+@app.get("/api/tools/list")
+def api_tools_list() -> dict:
+    return tools_list()
+
+
 @app.post("/tools/call")
 def tools_call(req: ToolCall) -> dict:
-    session_id = ensure_session(req.session_id)
+    return execute_tool_call(req, ensure_session(req.session_id))
+
+
+def execute_tool_call(req: ToolCall, session_id: str) -> dict:
+    """Shared core: record, decide, execute-or-halt. Used by the route + runner."""
     call_event = _record_call(req, session_id)
 
     if os.getenv("MODE", "monitor") != "enforcing":
@@ -165,6 +175,15 @@ def grant_approval(body: dict) -> dict:
     aid = body.get("approval_id", "")
     APPROVALS.add(aid)
     return {"granted": True, "approval_id": aid}
+
+
+@app.post("/api/agent/run")
+def api_agent_run(body: AgentRun) -> dict:
+    """Playground: run a prompt end-to-end, return the enforced trace."""
+    from crosstoolguard.gateway.agent_runner import run_task
+
+    return run_task(body.task, session_id=body.session_id,
+                    model=body.model, max_steps=body.max_steps)
 
 
 @app.get("/api/graph")

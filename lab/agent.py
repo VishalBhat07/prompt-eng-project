@@ -73,31 +73,81 @@ def call_tool(session_id: str, server: str, tool: str, args: dict) -> str:
         return _local_dispatch(server, tool, args)
 
 
-def plan_with_llm(task: str) -> tuple[str, str, dict]:
-    """Ask Groq which tool to call; offline fallback returns a sane default."""
+KNOWN_SERVERS = ("filesystem-mcp", "calculator-mcp", "search-mcp", "storage-mcp")
+
+
+def _parse_plan(content: str) -> tuple[str, str, dict]:
+    """Parse planner JSON, tolerating reasoning preambles around it."""
+    import re
+
+    try:
+        plan = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        match = re.search(r"\{.*\}", content or "", re.S)
+        try:
+            plan = json.loads(match.group(0)) if match else {}
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
+    if plan.get("server") == "DONE":
+        return ("DONE", "", {})
+    server, tool = str(plan.get("server", "")), str(plan.get("tool", ""))
+    if "." in tool:  # models often return "server.tool" in one field
+        server, tool = tool.split(".", 1)
+    if server not in KNOWN_SERVERS and f"{server}-mcp" in KNOWN_SERVERS:
+        server = f"{server}-mcp"
+    if not tool:
+        return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
+    return (server, tool, plan.get("arguments", {}) or {})
+
+
+def _groq_plan(messages: list[dict], model: str | None) -> tuple[str, str, dict]:
+    """One Groq planning call; offline/error fallback returns a sane default."""
+    from groq import Groq
+
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         print("[agent] GROQ_API_KEY unset - using offline default plan", flush=True)
         return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
     try:
-        from groq import Groq
-
         client = Groq(api_key=api_key)
-        catalog_txt = "\n".join(f"- {s}.{t}: {d} args={a}" for s, t, d, a in CATALOG)
         resp = client.chat.completions.create(
-            model=AGENT_MODEL,
-            messages=[
-                {"role": "system", "content": "Pick ONE lab tool as JSON: {\"server\":..., \"tool\":..., \"arguments\":{...}}. Reply with JSON only."},
-                {"role": "user", "content": f"Task: {task}\nTools:\n{catalog_txt}"},
-            ],
-            temperature=0,
-            max_tokens=1024,
-        )
-        plan = json.loads(resp.choices[0].message.content or "{}")
-        return (plan["server"], plan["tool"], plan.get("arguments", {}))
+            model=model or AGENT_MODEL, messages=messages,
+            temperature=0, max_tokens=1024)
+        return _parse_plan(resp.choices[0].message.content or "{}")
     except Exception as exc:
         print(f"[agent] Groq error ({exc}) - offline default plan", flush=True)
         return ("filesystem-mcp", "read_file", {"path": "invoice.txt"})
+
+
+def _lab_context() -> str:
+    """Ground the planner with real lab state (file list), not guesses."""
+    try:
+        from lab.servers.filesystem import list_files
+        return f"Files in lab data dir:\n{list_files()}"
+    except Exception:
+        return ""
+
+
+def plan_with_llm(task: str, model: str | None = None) -> tuple[str, str, dict]:
+    """Ask Groq which tool to call first; offline fallback returns a sane default."""
+    catalog_txt = "\n".join(f"- {s}.{t}: {d} args={a}" for s, t, d, a in CATALOG)
+    context = _lab_context()
+    return _groq_plan([
+        {"role": "system", "content": "Pick ONE lab tool as JSON: {\"server\":..., \"tool\":..., \"arguments\":{...}}. Reply with JSON only."},
+        {"role": "user", "content": f"Task: {task}\nTools:\n{catalog_txt}\n{context}"},
+    ], model)
+
+
+def plan_next(task: str, history: list[dict], model: str | None = None) -> tuple[str, str, dict]:
+    """Next step given prior tool results; reply DONE when the task is complete."""
+    trail = "\n".join(
+        f"- {h['server']}.{h['tool']} {h['arguments']} -> {h['verdict']}: {h['observation'][:300]}"
+        for h in history)
+    catalog_txt = "\n".join(f"- {s}.{t}: {d}" for s, t, d, _ in CATALOG)
+    return _groq_plan([
+        {"role": "system", "content": "Reply with EITHER {\"server\":\"DONE\"} when the task is complete, OR one tool call as JSON: {\"server\":..., \"tool\":..., \"arguments\":{...}}. JSON only."},
+        {"role": "user", "content": f"Task: {task}\nTools:\n{catalog_txt}\nSo far:\n{trail}"},
+    ], model)
 
 
 def main() -> None:
