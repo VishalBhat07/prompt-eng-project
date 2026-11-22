@@ -16,7 +16,7 @@ export default function Approvals() {
   };
   const decide = async (id: string, grant: boolean) => {
     try {
-      const response = await fetch(grant ? '/approvals/grant' : `/api/approvals/${encodeURIComponent(id)}/deny`, {
+      const response = await fetch(grant ? '/api/approvals/grant' : `/api/approvals/${encodeURIComponent(id)}/deny`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: grant ? JSON.stringify({ approval_id: id }) : '{}',
       });

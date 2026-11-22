@@ -1,5 +1,7 @@
 """Task 8 RED: dashboard API contract, alerts, NL explanations, WS."""
 
+import time
+
 from fastapi.testclient import TestClient
 
 
@@ -209,6 +211,51 @@ def test_dashboard_run_route_rejects_oversized_catalog(monkeypatch, tmp_path):
         assert "too large" in response.json()["detail"]
 
 
+def test_automatic_discovery_fits_relevant_tools_across_large_catalog(monkeypatch, tmp_path):
+    from crosstoolguard.evaluation import multi_server_runner
+    from crosstoolguard.gateway.proxy import app
+    from crosstoolguard.registry.tools import ToolRegistry
+
+    db = tmp_path / "registry.db"
+    monkeypatch.setenv("REGISTRY_DB", str(db))
+    monkeypatch.setenv("CTG_RUNS_DIR", str(tmp_path / "runs"))
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("CTG_MAX_AGENT_CONTEXT_CHARS", "450")
+    registry = ToolRegistry(str(db))
+    try:
+        for server, tool in [("billing", "find_invoice"), ("weather", "lookup_forecast")]:
+            inventory = registry.register_server_inventory({
+                "server_id": server, "transport": "streamable-http", "tools": [
+                    {"name": tool, "description": f"{tool} " + "Reference data. " * 30,
+                     "inputSchema": {"type": "object"}},
+                    *[{"name": f"unrelated_{index}", "description": "Reference data. " * 30,
+                       "inputSchema": {"type": "object"}} for index in range(5)],
+                ]})
+            assert registry.approve_server_inventory(server, inventory.inventory_hash)
+    finally:
+        registry.close()
+
+    seen = []
+
+    async def fake_run(**kwargs):
+        seen.append(kwargs["allowed_tools"])
+        return {"outcome": "COMPLETED", "calls": []}
+
+    monkeypatch.setattr(multi_server_runner, "run_multi_server_task", fake_run)
+    with TestClient(app) as client:
+        for task in ["Find an invoice", "Look up the weather forecast"]:
+            response = client.post("/api/mcp/agent/run", json={"task": task, "auto_discover": True})
+            assert response.status_code == 200
+            run = response.json()
+            assert run["available_tool_count"] == 12
+            assert run["approved_tool_count"] == 1 and run["context_chars"] <= 450
+            for _ in range(20):
+                if client.get(f"/api/mcp/agent/runs/{run['session_id']}").json()["status"] == "complete":
+                    break
+                time.sleep(0.05)
+    assert seen == [["billing/find_invoice"], ["weather/lookup_forecast"]]
+
+
 def test_approval_queue_and_deny():
     from crosstoolguard.gateway import proxy
 
@@ -275,3 +322,33 @@ def test_inventory_approval_requires_exact_fingerprint(monkeypatch, tmp_path):
     assert response.status_code == 200
     assert response.json()["approved"] is True
     assert response.json()["inventory"]["integrity_status"] == "APPROVED"
+
+
+def test_revoked_inventory_is_preserved_but_excluded_from_runs(monkeypatch, tmp_path):
+    from crosstoolguard.registry.tools import ToolRegistry
+
+    db_path = str(tmp_path / "registry.db")
+    monkeypatch.setenv("MCP_INVENTORY_API_ENABLED", "true")
+    monkeypatch.setenv("REGISTRY_DB", db_path)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    registry = ToolRegistry(db_path)
+    try:
+        record = registry.register_server_inventory({
+            "server_id": "fixture", "transport": "streamable-http",
+            "tools": [{"name": "echo", "inputSchema": {"type": "object"}}],
+        })
+    finally:
+        registry.close()
+    client = _client()
+    body = {"server_id": "fixture", "inventory_hash": record.inventory_hash}
+    assert client.post("/api/registry/approve", json=body).status_code == 200
+    assert client.post("/api/registry/revoke", json={**body, "inventory_hash": "0" * 64}).status_code == 409
+    response = client.post("/api/registry/revoke", json=body)
+    assert response.status_code == 200
+    inventory = response.json()["inventory"]
+    assert inventory["integrity_status"] == "NEW"
+    assert inventory["inventory_hash"] == record.inventory_hash
+    assert inventory["tools"][0]["_registry"]["integrity_status"] == "NEW"
+    run = client.post("/api/mcp/agent/run", json={"task": "Echo hello"})
+    assert run.status_code == 422
+    assert "approved" in run.json()["detail"].lower()

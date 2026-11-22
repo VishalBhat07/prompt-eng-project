@@ -62,7 +62,7 @@ export default function Sessions() {
           </div>
         ))}
       </div>
-      <div style={{ borderTop: '1px solid var(--line)', marginTop: 8 }}>
+      <div role="region" aria-label="Recorded sessions table" tabIndex={0} style={{ borderTop: '1px solid var(--line)', marginTop: 8, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ color: 'var(--faint)', textAlign: 'left', fontSize: 12.5, letterSpacing: '0.06em', textTransform: 'uppercase' }}>

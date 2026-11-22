@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, MiniMap, type Edge, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { RiskMeter, SeverityBadge } from '../components/Severity';
@@ -29,6 +29,7 @@ export default function GraphExplorer() {
 
   useEffect(() => {
     setData(null); setError('');
+    setSelected(null); setHovered(null); setFocus(null); setPlaying(false);
     if (!session) return;
     let active = true;
     const refresh = () => loadSession(session).then((next) => {
@@ -124,7 +125,9 @@ export default function GraphExplorer() {
           solid = observed · red = suspicious output signal or detected path · dashed orange = possible harm (not evidence the agent used it)
         </p>
       </header>
-      {!session && <p>Choose a run from Sessions to inspect its graph.</p>}
+      {!session && <p>Choose a run from <Link to="/sessions">Sessions</Link> to inspect its graph.</p>}
+      {session && !data && !error && <p role="status">Loading session graph…</p>}
+      {data && data.nodes.length === 0 && <p role="status">No graph events have been recorded for this session yet.</p>}
       {error && <p role="alert">{error}</p>}
       {(data?.potential_paths?.length ?? 0) > 0 && <section style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
         <strong>Possible harm paths (dashed graph edges)</strong>

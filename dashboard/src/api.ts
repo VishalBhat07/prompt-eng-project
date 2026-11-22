@@ -83,8 +83,8 @@ export async function inspectRemoteServer(input: { server_id: string; url: strin
   return body;
 }
 
-export async function approveInventory(input: { server_id: string; inventory_hash: string }) {
-  const r = await fetch('/api/registry/approve', {
+export async function setInventoryApproval(input: { server_id: string; inventory_hash: string }, approve: boolean) {
+  const r = await fetch(approve ? '/api/registry/approve' : '/api/registry/revoke', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

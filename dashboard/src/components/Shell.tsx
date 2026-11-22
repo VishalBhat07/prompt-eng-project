@@ -39,15 +39,15 @@ export default function Shell() {
         background: 'color-mix(in srgb, var(--bg-0) 72%, transparent)',
         borderBottom: '1px solid var(--line)',
       }}>
-        <nav aria-label="primary" style={{
+        <nav aria-label="primary" className="shell-nav" style={{
           display: 'flex', alignItems: 'center', gap: 4,
-          maxWidth: 1180, margin: '0 auto', padding: '0 24px', height: 60,
+          maxWidth: 1180, margin: '0 auto', padding: '8px 24px', minHeight: 60,
         }}>
           <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', marginRight: 20 }}>
             <Mark />
             <span style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.01em' }}>CrossToolGuard</span>
           </NavLink>
-          <div style={{ display: 'flex', gap: 2 }}>
+          <div className="shell-links" style={{ display: 'flex', gap: 2 }}>
             {LINKS.slice(1).map(([to, label]) => (
               <NavLink key={to} to={to}
                 style={({ isActive }) => ({

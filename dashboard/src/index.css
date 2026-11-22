@@ -117,3 +117,12 @@ table { font-size: 14.5px; }
 }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 850px) {
+  .shell-nav { flex-wrap: wrap; }
+  .shell-links {
+    order: 2;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

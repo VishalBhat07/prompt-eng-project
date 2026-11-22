@@ -50,6 +50,13 @@ Body: `{server_id, inventory_hash}`. Review the report and approve the exact cur
 The endpoint returns HTTP 409 if the stored fingerprint changed since review. Approval is a
 version pin, not a safety certification. A later change returns the server to `MODIFIED`.
 
+## `POST /api/registry/revoke`
+
+Body: `{server_id, inventory_hash}`. Withdraws approval of the exact current
+fingerprint and returns the inventory to review. The definition and assessment
+remain available. Requires `MCP_INVENTORY_API_ENABLED=true` and returns HTTP 409
+if the fingerprint or approval state has changed.
+
 ## `POST /api/mcp/tools/call`
 
 Body: `{session_id, server_id, tool, arguments, bearer_token?, approval_id?}`. This route supports
@@ -71,7 +78,7 @@ Reply: `{verdict, result, reason, approval_id?}`
 - `APPROVAL` → `result: null` + `approval_id`; re-POST with `approval_id`
   after an operator grants it through `POST /approvals/grant` executes once (one-shot).
 
-## `POST /approvals/grant`
+## `POST /api/approvals/grant` (also `POST /approvals/grant`)
 
 Body: `{approval_id}` → `{granted: true, approval_id}`. Grants are accepted only for a
 matching, live approval request, expire after five minutes, and are consumed by one matching call.
@@ -95,7 +102,7 @@ Saved run snapshots under `CTG_RUNS_DIR` are also returned, so a recorded model 
 
 ## `POST /api/mcp/agent/run`
 
-Multi-server agent run. Body includes `task`, `provider`, `model`, `policy`, `max_steps`, and `max_calls_per_tool`. The server automatically exposes approved tool inventories to the agent; each model-selected call uses `/api/mcp/tools/call`. Returns `{session_id, status: "running", approved_tool_count}` immediately. Poll `GET /api/mcp/agent/runs/{session_id}` for status and the final hashed report. A pending sensitive call changes status to `awaiting_approval`; a grant through `/approvals/grant` resumes that exact call. Completed runs save a redacted session snapshot.
+Multi-server agent run. The body accepts `task`, `provider`, `model`, `policy`, `max_steps`, `max_calls_per_tool`, optional `server_ids`, and `auto_discover`. With `auto_discover: true`, the gateway ranks approved tools by task keywords and fits candidates into the initial catalog budget. The dashboard enables this by default. Existing clients can omit the option to use the full catalog and its size check. Returns the session ID, status, and candidate count (`approved_tool_count`) alongside the count before discovery (`available_tool_count`). Poll `GET /api/mcp/agent/runs/{session_id}` for status and the redacted report. A pending sensitive call changes status to `awaiting_approval`. Grant through `/api/approvals/grant` to resume that exact call.
 The status response includes the final answer while the gateway process holds the run in memory; saved reports contain only its hash.
 
 ## `GET /api/runs`

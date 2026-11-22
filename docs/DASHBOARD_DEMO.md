@@ -64,7 +64,7 @@ Open `http://127.0.0.1:5173`. Restart the gateway after changing `.env` or backe
 
    Review the displayed tool definitions and assessment before approving each fingerprint. Optional public positive control: `mcptest-echo` at `https://mcptest.io/fixtures/echo/mcp`.
 
-2. **Run a task:** Open `/demo`. Enter a task, for example `Find invoice INV-1042 and summarize its total and status.` Select the servers for this run. The page defaults to the three local fixtures; for a public prompt, select only the public server or two named in that prompt. Choose Groq and the hardened policy, then select **Run task**. The agent sees the selected servers' approved tools and selects what it needs. The page shows the run status, final answer, and any approval request. The answer is available from the live run until the gateway restarts; saved reports contain its hash. A sensitive call waits for **Grant once** or **Deny**, and the agent resumes only after a grant. A single search `ALLOW` means that legitimate search was permitted; it does not mean an attack was blocked.
+2. **Run a task:** Open `/demo`. Enter a task, for example `Find invoice INV-1042 and summarize its total and status.` Choose Groq and the hardened policy, then select **Run task**. The gateway ranks approved tools and fits candidates into the initial model context. Enable **Limit discovery to selected servers** for a fixture or a repeatable server comparison. The page shows the run status, answer, and approval requests. Saved reports contain the answer hash. A sensitive call waits for **Grant once** or **Deny**.
 
    Open the session graph after the run. Solid nodes and edges are observed calls and dataflow. A red instruction node marks the poisoned document note as an **observed suspicious output signal**, even if Groq stops after search. Dashed orange nodes and edges show **possible harm** inferred from approved sensitive-read and transfer tools. A dashed edge links the observed output to that hypothetical path. The Findings page lists suspicious output signals, completed attack paths, and possible paths separately. A possible path is not evidence that the agent used those tools.
 
@@ -104,7 +104,7 @@ Restart the gateway after the catalog update so it reloads the exact allowed hos
 - Benchmark counts are read from `benchmark.json` instead of hardcoded `/8`, and recorded runs can be refreshed.
 - Graph "Suspicious only" includes suspicious-output signal nodes, not just completed attack paths.
 - Findings separates observed attack paths, suspicious output signals, and possible harm paths with counts.
-- **Run a task** now scopes the catalog to the servers you select. The default is the three local fixtures. This avoids Groq free-tier `rate_limit_exceeded` errors caused by sending all 80 tools and every server instruction in one request. The gateway rejects an initial catalog over 20,000 characters with a clear message; operators can raise `CTG_MAX_AGENT_CONTEXT_CHARS` for a provider with a larger limit.
+- **Run a task** searches all approved servers by default. It uses task words to rank tool names and descriptions and fits candidates into the configurable initial catalog budget (20,000 characters by default). Optional server scope narrows the same search. The shortlist is heuristic and provider quotas still apply.
 - The test environment defaults to `CTG_SEMANTIC_MODE=heuristic`; the full embedding-layer test is skipped when NumPy/sentence-transformers are not installed.
 
 ### Public catalog added
@@ -180,6 +180,21 @@ Record task, chosen tools, answer, run outcome, signals, and graph behavior duri
 The local scripted case verifies cross-server graph enforcement before the mock side effect. The Groq agent run records the model's actual choices, whether or not it follows the poisoned result. The two observations are shown separately so the demo does not claim a model attack was blocked when the model chose a safe path.
 
 ## What the demo proves
+
+For a repeatable browser check on Windows, install the optional Playwright client
+in the same virtual environment, install dashboard packages with `npm ci`, and
+run the following from the project root:
+
+```powershell
+.\.venv-phase2\Scripts\python.exe -m pip install playwright
+.\.venv-phase2\Scripts\python.exe scripts/dashboard_browser_smoke.py
+```
+
+The browser check uses installed Microsoft Edge by default. Set
+`CTG_SMOKE_BROWSER=chrome` to use installed Chrome. It uses a scripted model,
+an in-memory mock destination, and a temporary registry. It covers inventory
+review, revocation, an ordinary task, grant and deny, Findings, and saved graph
+rendering after a gateway restart.
 
 - The gateway reads real inventory, run, session, graph, finding, and approval state; saved runs survive a proxy restart.
 - Approved tools from multiple public MCP servers can be selected by the model and linked into one session graph.

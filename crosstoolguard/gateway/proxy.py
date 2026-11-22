@@ -22,6 +22,7 @@ import ipaddress
 import json
 import os
 import queue
+import re
 import socket
 import threading
 import time
@@ -103,6 +104,7 @@ class MultiServerRunRequest(BaseModel):
     model: str | None = None
     policy: str = "hardened"
     server_ids: list[str] | None = Field(default=None, max_length=100)
+    auto_discover: bool = False
     max_steps: int = Field(default=6, ge=1, le=12)
     max_calls_per_tool: int = Field(default=2, ge=1, le=12)
 
@@ -123,6 +125,36 @@ def _agent_context_chars(inventories: list[dict]) -> int:
                if tool.get("_registry", {}).get("integrity_status") == "APPROVED"]
     return (len(json.dumps(catalog, ensure_ascii=False, default=str)) +
             len(json.dumps(instructions, ensure_ascii=False, default=str)))
+
+
+def _discover_tools(task: str, inventories: list[dict], context_limit: int) -> list[dict]:
+    """Rank approved tools locally and fit the leading candidates into the prompt."""
+    words = set(re.findall(r"[a-z0-9]{3,}", task.lower())) - {
+        "the", "and", "for", "with", "from", "using", "use", "please", "find", "show",
+    }
+    candidates = []
+    for item in inventories:
+        for tool in item.get("tools", []):
+            if tool.get("_registry", {}).get("integrity_status") != "APPROVED":
+                continue
+            identity = set(re.findall(r"[a-z0-9]{3,}", f"{item['server_id']} {tool['name']}".lower()))
+            description = set(re.findall(r"[a-z0-9]{3,}", str(tool.get("description") or "")[:280].lower()))
+            score = 3 * len(words & identity) + len(words & description)
+            candidates.append((-score, item["server_id"], tool["name"], item, tool))
+    selected = {}
+    count = 0
+    for _, server_id, _, item, tool in sorted(candidates, key=lambda candidate: candidate[:3]):
+        group = selected.setdefault(server_id, {**item, "tools": []})
+        group["tools"].append(tool)
+        if _agent_context_chars(list(selected.values())) > context_limit:
+            group["tools"].pop()
+            if not group["tools"]:
+                del selected[server_id]
+            continue
+        count += 1
+        if count == 100:
+            break
+    return list(selected.values())
 
 
 def _validate_inventory_target(url: str) -> None:
@@ -336,6 +368,7 @@ def execute_tool_call(req: ToolCall, session_id: str) -> dict:
 
 
 @app.post("/approvals/grant")
+@app.post("/api/approvals/grant")
 def grant_approval(body: ApprovalGrant) -> dict:
     """Grant a currently pending approval in the local dashboard."""
     aid = body.approval_id
@@ -412,15 +445,21 @@ async def api_multi_server_run(body: MultiServerRunRequest) -> dict:
             raise HTTPException(status_code=422,
                                 detail="Selected server is missing or not approved: " + ", ".join(missing))
         inventories = [by_id[server_id] for server_id in requested]
+    context_limit = int(os.getenv("CTG_MAX_AGENT_CONTEXT_CHARS", str(MAX_AGENT_CONTEXT_CHARS)))
+    available_tool_count = sum(tool.get("_registry", {}).get("integrity_status") == "APPROVED"
+                               for item in inventories for tool in item.get("tools", []))
+    if body.auto_discover:
+        inventories = _discover_tools(body.task, inventories, context_limit)
     refs = [f"{item['server_id']}/{tool['name']}" for item in inventories
             for tool in item.get("tools", [])
             if tool.get("_registry", {}).get("integrity_status") == "APPROVED"]
     if not refs:
-        raise HTTPException(status_code=422, detail="No approved MCP tools are available; review an inventory first")
+        detail = ("No approved tool fits the configured discovery budget" if available_tool_count
+                  else "No approved MCP tools are available; review an inventory first")
+        raise HTTPException(status_code=422, detail=detail)
     if len(refs) > 100:
         raise HTTPException(status_code=422, detail="More than 100 approved tools; reduce approved inventories for this run")
     context_chars = _agent_context_chars(inventories)
-    context_limit = int(os.getenv("CTG_MAX_AGENT_CONTEXT_CHARS", str(MAX_AGENT_CONTEXT_CHARS)))
     if context_chars > context_limit:
         raise HTTPException(
             status_code=422,
@@ -431,11 +470,13 @@ async def api_multi_server_run(body: MultiServerRunRequest) -> dict:
     selected_server_ids = [item["server_id"] for item in inventories]
     RUN_STATUS[session_id] = {"status": "running", "session_id": session_id,
                               "approved_tool_count": len(refs),
+                              "available_tool_count": available_tool_count,
                               "selected_server_ids": selected_server_ids,
                               "context_chars": context_chars,
                               "inventories": inventories}
     asyncio.create_task(_run_approved_agent(session_id, body, refs, provider, model))
     return {"session_id": session_id, "status": "running", "approved_tool_count": len(refs),
+            "available_tool_count": available_tool_count,
             "selected_server_ids": selected_server_ids, "context_chars": context_chars}
 
 
@@ -555,6 +596,22 @@ def api_registry_approve(body: MCPInventoryApproval) -> dict:
         if not registry.approve_server_inventory(body.server_id, body.inventory_hash):
             raise HTTPException(status_code=409, detail="Inventory changed; refresh and review the current fingerprint")
         return {"inventory": registry.get_server_inventory(body.server_id), "approved": True}
+    finally:
+        registry.close()
+
+
+@app.post("/api/registry/revoke")
+def api_registry_revoke(body: MCPInventoryApproval) -> dict:
+    """Withdraw approval for the reviewed snapshot while retaining its evidence."""
+    if os.getenv("MCP_INVENTORY_API_ENABLED", "false").lower() != "true":
+        raise HTTPException(status_code=404, detail="Remote inventory management is disabled")
+    from crosstoolguard.registry.tools import ToolRegistry
+
+    registry = ToolRegistry(os.getenv("REGISTRY_DB", "registry.db"))
+    try:
+        if not registry.revoke_server_inventory(body.server_id, expected_hash=body.inventory_hash):
+            raise HTTPException(status_code=409, detail="Approval or fingerprint changed. Refresh the inventory.")
+        return {"inventory": registry.get_server_inventory(body.server_id), "approved": False}
     finally:
         registry.close()
 

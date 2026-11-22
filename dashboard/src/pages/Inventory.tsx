@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { approveInventory, fetchInventories, inspectRemoteServer, type MCPInventory, type MCPToolDefinition } from '../api';
+import { setInventoryApproval, fetchInventories, inspectRemoteServer, type MCPInventory, type MCPToolDefinition } from '../api';
 
 function Definition({ tool }: { tool: MCPToolDefinition }) {
   const [open, setOpen] = useState(false);
@@ -129,7 +129,12 @@ function ServerCard({ inventory, approving, onApprove }: {
             Approval records that an operator reviewed this version; it does not certify the server as safe. Any later change requires review again.
           </p>
         </div>
-      ) : <p className="mono" style={{ color: 'var(--clean)', fontSize: 11, marginTop: 12 }}>This exact fingerprint is operator-approved.</p>}
+      ) : <div style={{ marginTop: 14 }}>
+        <p className="mono" style={{ color: 'var(--clean)', fontSize: 11 }}>This exact fingerprint is operator-approved.</p>
+        <button disabled={approving} onClick={() => onApprove(inventory)} style={{ marginTop: 8 }}>
+          {approving ? 'Revoking approval…' : 'Revoke approval'}
+        </button>
+      </div>}
       <div style={{ marginTop: 20 }}>
         <button onClick={() => setOpen(!open)}>
           {open ? 'Hide tools' : `Review ${inventory.tools.length} tool definitions`}
@@ -201,15 +206,17 @@ export default function Inventory() {
   }
 
   async function approveSnapshot(inventory: MCPInventory) {
+    const approve = inventory.integrity_status !== 'APPROVED';
     setApprovingServer(inventory.server_id);
     setError('');
     setNotice('');
     try {
-      await approveInventory({ server_id: inventory.server_id, inventory_hash: inventory.inventory_hash });
+      await setInventoryApproval({ server_id: inventory.server_id, inventory_hash: inventory.inventory_hash }, approve);
       setInventories(await fetchInventories());
-      setNotice(`Pinned reviewed snapshot for ${inventory.server_id}.`);
+      setNotice(approve ? `Pinned reviewed snapshot for ${inventory.server_id}.`
+                        : `Revoked approval for ${inventory.server_id}. Its tools are unavailable to new runs.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not approve this snapshot');
+      setError(err instanceof Error ? err.message : 'Could not update inventory approval');
     } finally {
       setApprovingServer('');
     }

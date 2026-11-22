@@ -177,15 +177,15 @@ class ToolRegistry:
         self._db.commit()
         return True
 
-    def revoke_server_inventory(self, server_id: str) -> bool:
+    def revoke_server_inventory(self, server_id: str, *, expected_hash: str | None = None) -> bool:
         """Return a previously approved snapshot to review-required state.
 
         Use this when an operator finds a server unusable or no longer wants it
         in the autonomous tool catalog. The inventory itself is kept for audit.
         """
-        cursor = self._db.execute(
-            "UPDATE mcp_servers SET integrity_status='NEW' WHERE server_id=?", (server_id,)
-        )
+        query = "UPDATE mcp_servers SET integrity_status='NEW' WHERE server_id=? AND integrity_status='APPROVED'"
+        cursor = (self._db.execute(query, (server_id,)) if expected_hash is None
+                  else self._db.execute(query + " AND inventory_hash=?", (server_id, expected_hash)))
         if cursor.rowcount != 1:
             self._db.rollback()
             return False

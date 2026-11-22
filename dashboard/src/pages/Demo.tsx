@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { fetchInventories, type MCPInventory } from '../api';
 
 interface RunReport {
   session_id: string; outcome: string; halted_reason: string; provider?: string; model?: string; policy?: string;
@@ -27,21 +28,41 @@ export default function Demo() {
   const [session, setSession] = useState(params.get('session') ?? '');
   const [status, setStatus] = useState(params.has('session') ? 'running' : '');
   const [toolCount, setToolCount] = useState(0);
+  const [availableToolCount, setAvailableToolCount] = useState(0);
+  const [manualScope, setManualScope] = useState(false);
   const [report, setReport] = useState<RunReport | null>(null);
   const [answer, setAnswer] = useState('');
   const [pending, setPending] = useState<Pending[]>([]);
   const [error, setError] = useState('');
-  const [catalog, setCatalog] = useState<{ server_id: string; tools: { name: string }[]; integrity_status: string }[]>([]);
+  const [catalog, setCatalog] = useState<MCPInventory[] | null>(null);
+  const [catalogError, setCatalogError] = useState('');
   const [selectedServers, setSelectedServers] = useState<string[]>([]);
-  useEffect(() => { fetch('/api/registry/inventories').then((r) => r.json())
-    .then((body) => {
-      const approved = (body.inventories ?? []).filter((item: { integrity_status: string }) => item.integrity_status === 'APPROVED');
-      setCatalog(approved);
-      const local = ['fixture-invoice', 'fixture-file', 'fixture-send']
-        .filter((serverId) => approved.some((item: { server_id: string }) => item.server_id === serverId));
-      setSelectedServers(local.length ? local : approved.map((item: { server_id: string }) => item.server_id));
-    })
-    .catch(() => setError('Could not load the approved inventory.')); }, []);
+  useEffect(() => {
+    let active = true;
+    let firstLoad = true;
+    const refresh = async () => {
+      try {
+        const approved = (await fetchInventories()).filter((item) => item.integrity_status === 'APPROVED');
+        if (!active) return;
+        const ids = new Set(approved.map((item) => item.server_id));
+        if (firstLoad) {
+          const local = ['fixture-invoice', 'fixture-file', 'fixture-send'].filter((id) => ids.has(id));
+          setSelectedServers(local.length ? local : [...ids]);
+          firstLoad = false;
+        } else {
+          setSelectedServers((current) => current.filter((id) => ids.has(id)));
+        }
+        setCatalog(approved);
+        setCatalogError('');
+      } catch {
+        if (active) setCatalogError('Could not load approved servers. The dashboard will retry.');
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+  const approvedServers = catalog ?? [];
 
   useEffect(() => { fetch('/api/llm/providers').then((r) => r.json()).then((body) => setProviders(body.providers ?? [])).catch(() => {}); }, []);
   useEffect(() => {
@@ -53,6 +74,7 @@ export default function Demo() {
         if (!response.ok) throw new Error(body.detail ?? `Status failed (${response.status})`);
         setStatus(body.status);
         if (body.approved_tool_count) setToolCount(body.approved_tool_count);
+        if (body.available_tool_count) setAvailableToolCount(body.available_tool_count);
         if (body.report) setReport(body.report);
         if (typeof body.answer === 'string') setAnswer(body.answer);
         if (body.error) setError(body.error);
@@ -75,18 +97,20 @@ export default function Demo() {
     try {
       const response = await fetch('/api/mcp/agent/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task, provider, model: model || undefined, policy, server_ids: selectedServers }),
+        body: JSON.stringify({ task, provider, model: model || undefined, policy, auto_discover: true,
+          server_ids: manualScope ? selectedServers : undefined }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.detail ?? `Run failed (${response.status})`);
       setToolCount(body.approved_tool_count); setSession(body.session_id); setStatus(body.status);
+      setAvailableToolCount(body.available_tool_count);
       setParams({ session: body.session_id });
     } catch (e) { setError(e instanceof Error ? e.message : 'Run failed'); setStatus('error'); }
   };
 
   const decide = async (approval: Pending, grant: boolean) => {
     try {
-      const response = await fetch(grant ? '/approvals/grant' : `/api/approvals/${encodeURIComponent(approval.id)}/deny`, {
+      const response = await fetch(grant ? '/api/approvals/grant' : `/api/approvals/${encodeURIComponent(approval.id)}/deny`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: grant ? JSON.stringify({ approval_id: approval.id }) : '{}',
       });
@@ -97,22 +121,25 @@ export default function Demo() {
 
   return <div>
     <header style={{ padding: '56px 0 28px', maxWidth: 760 }}><span className="eyebrow">Agent workspace</span>
-      <h1>Run a task</h1><p className="sub">Choose the approved MCP servers for this run. The agent discovers their tools and chooses its own path. CrossToolGuard checks each call and builds both observed and possible harm graphs.</p></header>
+      <h1>Run a task</h1><p className="sub">Enter a task to discover relevant tools from approved MCP servers. CrossToolGuard checks each call and records the evidence.</p></header>
     <div className="card" style={{ padding: 22, display: 'grid', gap: 16 }}>
-      <details><summary>{catalog.reduce((sum, item) => sum + item.tools.length, 0)} approved tools across {catalog.length} servers</summary>
-        {catalog.map((item) => <p key={item.server_id}>{item.server_id}: {item.tools.map((tool) => tool.name).join(', ')}</p>)}
-      </details>
-      <fieldset style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
-        <legend>Servers for this run ({selectedServers.length}/{catalog.length})</legend>
+      {catalogError ? <p role="alert">{catalogError}</p> : !catalog ? <p role="status">Loading approved servers…</p>
+        : catalog.length === 0 && <p>No approved servers. <Link to="/inventory">Review and approve an inventory</Link>.</p>}
+      {approvedServers.length > 0 && <details><summary>{approvedServers.reduce((sum, item) => sum + item.tools.length, 0)} approved tools across {approvedServers.length} servers</summary>
+        {approvedServers.map((item) => <p key={item.server_id}>{item.server_id}: {item.tools.map((tool) => tool.name).join(', ')}</p>)}
+      </details>}
+      <label><input type="checkbox" checked={manualScope} onChange={(event) => setManualScope(event.target.checked)} /> Limit discovery to selected servers</label>
+      {manualScope && <fieldset disabled={!approvedServers.length || Boolean(catalogError)} style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
+        <legend>Servers for this run ({selectedServers.length}/{approvedServers.length})</legend>
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0 }}>
-          Select only the servers needed for the task. Groq's free tier has an 8,000-token/minute limit; a smaller catalog avoids rate-limit errors.
+          Choose the servers needed for the task. Smaller catalogs use less model context.
         </p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <button type="button" onClick={() => setSelectedServers(catalog.map((item) => item.server_id))}>Select all</button>
+          <button type="button" onClick={() => setSelectedServers(approvedServers.map((item) => item.server_id))}>Select all</button>
           <button type="button" onClick={() => setSelectedServers([])}>Clear</button>
         </div>
         <div style={{ display: 'grid', gap: 6 }}>
-          {catalog.map((item) => <label key={item.server_id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+          {approvedServers.map((item) => <label key={item.server_id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <input type="checkbox" checked={selectedServers.includes(item.server_id)}
               onChange={(e) => setSelectedServers((current) => e.target.checked
                 ? [...current, item.server_id]
@@ -121,8 +148,8 @@ export default function Demo() {
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>{item.tools.length} tools</span>
           </label>)}
         </div>
-      </fieldset>
-      <label>Task<br /><textarea value={task} onChange={(e) => setTask(e.target.value)} placeholder="For example: Find invoice INV-1042 and summarize its total and status." rows={3} style={{ width: '100%', marginTop: 6 }} /></label>
+      </fieldset>}
+      <div><label htmlFor="agent-task">Task</label><textarea id="agent-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder="For example: Find invoice INV-1042 and summarize its total and status." rows={3} style={{ display: 'block', width: '100%', marginTop: 6 }} /></div>
       <label>Model provider<br /><select value={provider} onChange={(e) => { setProvider(e.target.value); setModel(''); }}>
         {providers.map((item) => <option key={item.id} value={item.id} disabled={!item.configured}>{item.id}{item.configured ? '' : ' (not configured)'}</option>)}
       </select></label>
@@ -131,15 +158,15 @@ export default function Demo() {
       </select></label>
       <label>Agent policy<br /><select value={policy} onChange={(e) => setPolicy(e.target.value)}><option value="hardened">Hardened</option><option value="baseline">Baseline</option></select></label>
       <p style={{ color: 'var(--muted)', fontSize: 13 }}>Approved tool descriptions, your task, and returned tool data go to the model provider. Use test data and review approved inventories before running.</p>
-      <button className="btn-primary" disabled={!task.trim() || selectedServers.length === 0 || status === 'starting' || status === 'running' || status === 'awaiting_approval'} onClick={start}>Run task</button>
+      <button className="btn-primary" disabled={!task.trim() || Boolean(catalogError) || !approvedServers.length || (manualScope && !selectedServers.length) || status === 'starting' || status === 'running' || status === 'awaiting_approval'} onClick={start}>Run task</button>
     </div>
     {error && <p role="alert" style={{ color: 'var(--crit)' }}>{error}</p>}
     {session && <section style={{ marginTop: 24 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0 }}>Session {session}</h2>
-        <button style={{ marginLeft: 'auto' }} onClick={() => { setSession(''); setStatus(''); setReport(null); setAnswer(''); setPending([]); setParams({}); }}>Start another run</button>
+        <button style={{ marginLeft: 'auto' }} onClick={() => { setTask(''); setSession(''); setStatus(''); setReport(null); setAnswer(''); setPending([]); setError(''); setParams({}); }}>Start another run</button>
       </div>
-      <p>Status: {status} · {toolCount} approved tools available</p>
+      <p>Status: {status} · {toolCount} candidate tools{availableToolCount > toolCount ? ` out of ${availableToolCount} approved` : ''}</p>
       {pending.map((item) => <div key={item.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
         <strong>Approval required: {item.server}/{item.tool}</strong>
         <p>Argument fields: {item.argument_fields?.join(', ') || 'none'} · Data class: {item.data_class ?? 'unknown'}</p>

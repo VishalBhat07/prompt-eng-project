@@ -76,7 +76,7 @@ def test_agent_waits_for_operator_approval_then_resumes(monkeypatch, tmp_path):
         assert request["argument_fields"] == ["content"]
         assert request["arguments_sha256"]
         approval_id = request["id"]
-        assert client.post("/approvals/grant",
+        assert client.post("/api/approvals/grant",
                            json={"approval_id": approval_id}).status_code == 200
         for _ in range(100):
             state = client.get(f"/api/mcp/agent/runs/{session_id}").json()

@@ -13,24 +13,29 @@ export default function Findings() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [severity, setSeverity] = useState('ALL');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(0);
   useEffect(() => {
     let active = true;
     const refresh = () => listSessions().then(async (sessions) => {
-      const results = await Promise.all(sessions.map(async ({ id }) => {
+      const results = await Promise.allSettled(sessions.map(async ({ id }) => {
         const response = await fetch(`/api/sessions/${encodeURIComponent(id)}`);
-        if (!response.ok) return { observed: [] as Finding[], possible: [] as Potential[], signals: [] as Signal[] };
+        if (!response.ok) throw new Error(`Session ${id} could not be loaded`);
         const body = await response.json() as { alerts?: Omit<Finding, 'session'>[]; potential_paths?: Omit<Potential, 'session'>[]; signals?: Omit<Signal, 'session'>[] };
         return { observed: (body.alerts ?? []).map((item) => ({ ...item, session: id })),
           possible: (body.potential_paths ?? []).map((item) => ({ ...item, session: id })),
           signals: (body.signals ?? []).map((item) => ({ ...item, session: id })) };
       }));
       if (active) {
-        setRows(results.flatMap((item) => item.observed ?? []));
-        setPossible(results.flatMap((item) => item.possible ?? []));
-        setSignals(results.flatMap((item) => item.signals ?? []));
+        const available = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+        setRows(available.flatMap((item) => item.observed));
+        setPossible(available.flatMap((item) => item.possible));
+        setSignals(available.flatMap((item) => item.signals));
+        setMissing(results.length - available.length);
         setError('');
       }
-    }).catch((e: Error) => { if (active) setError(e.message); });
+    }).catch((e: Error) => { if (active) setError(e.message); })
+      .finally(() => { if (active) setLoading(false); });
     void refresh();
     const timer = window.setInterval(() => { void refresh(); }, 5000);
     return () => { active = false; window.clearInterval(timer); };
@@ -39,6 +44,8 @@ export default function Findings() {
     <header style={{ padding: '56px 0 28px', maxWidth: 720 }}><span className="eyebrow">Review</span>
       <h1>Findings</h1><p className="sub">Graph findings from recorded and live sessions.</p></header>
     {error && <p role="alert">{error}</p>}
+    {loading && <p role="status">Loading session findings…</p>}
+    {missing > 0 && <p role="status">{missing} session(s) could not be loaded. Counts below cover the available sessions.</p>}
     <section style={{ borderTop: '1px solid var(--line)', paddingTop: 18 }}>
       <h2>Observed attack paths <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· {rows.length}</span></h2>
       <p>Completed graph findings from live and saved sessions. A path is shown only when the observed events matched a configured pattern.</p>
@@ -52,7 +59,7 @@ export default function Findings() {
         <p>{item.explanation}</p>
         <Link to={`/graph?session=${encodeURIComponent(item.session)}`}>Open {item.session} graph →</Link>
       </article>)}
-    {!error && rows.length === 0 && <p>No attack paths detected in recorded sessions. Suspicious output signals and possible paths are listed below.</p>}
+    {!loading && !error && !missing && rows.length === 0 && <p>No attack paths detected in recorded sessions.</p>}
     <section style={{ marginTop: 32, borderTop: '1px solid var(--line)', paddingTop: 20 }}>
       <h2>Suspicious tool output observed <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· {signals.length}</span></h2>
       <p>An untrusted result contained an instruction-like command. This does not mean the agent followed it.</p>
@@ -60,7 +67,7 @@ export default function Findings() {
         <strong style={{ color: 'var(--crit)' }}>{item.origin_tool}</strong><p>{item.explanation}</p>
         <Link to={`/graph?session=${encodeURIComponent(item.session)}`}>View observed signal in graph →</Link>
       </article>)}
-      {signals.length === 0 && <p>No suspicious tool-output signals in recorded sessions.</p>}
+      {!loading && !error && !missing && signals.length === 0 && <p>No suspicious tool-output signals in recorded sessions.</p>}
     </section>
     <section style={{ marginTop: 32, borderTop: '1px solid var(--line)', paddingTop: 20 }}>
       <h2>Possible harm paths <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· {possible.length}</span></h2>
@@ -71,7 +78,7 @@ export default function Findings() {
         {item.trigger_events.length > 0 && <p>Untrusted output observed from {item.trigger_events.map((event) => event.tool).join(', ')}</p>}
         <Link to={`/graph?session=${encodeURIComponent(item.session)}`}>View possible path in graph →</Link>
       </article>)}
-      {possible.length === 0 && <p>No possible paths identified from the current approved tools.</p>}
+      {!loading && !error && !missing && possible.length === 0 && <p>No possible paths identified in recorded sessions.</p>}
     </section>
   </div>;
 }
