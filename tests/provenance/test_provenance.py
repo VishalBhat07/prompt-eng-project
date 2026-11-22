@@ -27,6 +27,14 @@ def test_classifier_public_for_benign():
     from crosstoolguard.provenance.events import classify_content
 
     assert classify_content("Invoice total $239.00, status PAID") == "PUBLIC"
+    assert classify_content('{"query":"AWS region codes for Mumbai and Frankfurt", "topics":["general"]}') == "PUBLIC"
+
+
+def test_entropy_is_applied_to_tokens_and_redacted():
+    from crosstoolguard.provenance.events import classify_content, redact
+    token = 'Ab3Cd4Ef5Gh6Ij7Kl8Mn9Op0Qr1St2Uv3Wx4Yz5Ab6Cd'
+    assert classify_content(token) == 'SECRET'
+    assert token not in redact(token)
 
 
 def test_preview_redacts_raw_secret():

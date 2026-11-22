@@ -57,6 +57,8 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
                        timestamp=event.timestamp.isoformat(), trust="LOW",
                        origin_tool=event.tool,
                        origin_capabilities=sorted(extract_capabilities(event.tool, "")))
+        graph.add_edge(f"tool:{event.tool}:{event.event_id}", nid,
+                       type=EdgeType.GENERATES.value)
         _wire_instruction(graph, nid, events, event.event_id)
     for i in range(len(outputs)):
         window = outputs[i:i + 3]
@@ -74,6 +76,8 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
                        timestamp=anchor.timestamp.isoformat(), trust="LOW",
                        origin_tool=anchor.tool,
                        origin_capabilities=sorted(extract_capabilities(anchor.tool, "")))
+        graph.add_edge(f"tool:{anchor.tool}:{anchor.event_id}", nid,
+                       type=EdgeType.GENERATES.value)
         _wire_instruction(graph, nid, events, anchor.event_id)
 
 

@@ -21,6 +21,7 @@ PROMPT_GUARD_MODEL = "meta-llama/llama-prompt-guard-2-86m"
 L1_PATTERNS = [
     r"ignor(e|ing) (all |the |previous |prior )?(instructions|directions|prompts)",
     r"disregard (all |the |previous |prior )?(instructions|directions)",
+    r"ignor(e|ing) (the )?user'?s (request|task)",
     r"exfiltrat(e|ion|ing)",
     r"(send|upload|transmit|leak).{0,40}(\.env|id_rsa|credentials?|secrets?|database)",
     r"bypass .{0,20}(safety|policy|guard|filter)",
@@ -131,7 +132,19 @@ def prompt_guard_score(text: str) -> float:
 
 def score_text(text: str, judge=None) -> float:
     canon = canonicalize(text)
-    fused = max(layer1_regex_score(canon), layer2_embed_score(canon), layer3_keyword_score(canon))
+    regex_score = layer1_regex_score(canon)
+    if regex_score >= 0.9:
+        # Direct hits are decisive; avoid loading the embedding model for them.
+        fused = regex_score
+    else:
+        keyword_score = layer3_keyword_score(canon)
+        mode = os.getenv("CTG_SEMANTIC_MODE", "full").strip().lower()
+        if mode == "heuristic":
+            fused = max(regex_score, keyword_score)
+        elif mode == "full":
+            fused = max(regex_score, layer2_embed_score(canon), keyword_score)
+        else:
+            raise ValueError("CTG_SEMANTIC_MODE must be 'full' or 'heuristic'")
     return maybe_judge(fused, judge, text)
 
 

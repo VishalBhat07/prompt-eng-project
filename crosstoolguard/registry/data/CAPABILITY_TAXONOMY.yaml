@@ -34,9 +34,14 @@ rules:
   - capability: EMAIL_SEND
     any: ["email", "mail.*send", "send.*mail"]
   - capability: CREDENTIAL_READ
-    any: ["\\.env", "id_rsa", "\\.pem", "credential", "secret.*(read|access)", "password", "api[_-]?key"]
+    any: ["\\.env\\b", "\\bid_rsa\\b", "\\.(?:pem|key)\\b", "\\bread[_ -]?credentials?\\b",
+          "\\b(?:read|access|retrieve|fetch|load|expose)\\s+(?:the\\s+)?(?:credentials?|secrets?|passwords?|api[_ -]?keys?|tokens?)\\b",
+          "\\b(?:credentials?|secrets?|passwords?|api[_ -]?keys?|tokens?)\\b.{0,40}\\b(?:read|access|retrieve|fetch|load|expose)\\b"]
   - capability: SHELL_EXEC
-    any: ["shell", "exec(ute)?", "run.*command", "terminal"]
+    any: ["\\b(?:shell|terminal|subprocess)\\b",
+          "\\b(?:exec|execute|run)\\s+(?:a\\s+)?(?:shell|command|script)\\b",
+          "\\b(?:command|script)\\b.{0,30}\\b(?:execute|run)\\b",
+          "\\bexec(?:ute)?[_ -]?(?:command|shell|script)\\b"]
   - capability: TRANSFORM
     any: ["transform", "convert", "summar", "compress", "export"]
   - capability: STORE

@@ -40,3 +40,60 @@ def test_runner_passes_provider_through(monkeypatch):
     out = runner.run_task("add", session_id="S-PROV", provider="groq", model="openai/gpt-oss-20b")
     assert seen == {"provider": "groq", "model": "openai/gpt-oss-20b"}
     assert out["provider"] == "groq" and out["done"] is True
+
+
+def test_groq_agent_action_uses_strict_json_schema(monkeypatch):
+    import sys
+    from types import ModuleType, SimpleNamespace
+    from crosstoolguard.llm.providers import complete_action
+
+    captured = {}
+    groq_module = ModuleType("groq")
+
+    class FakeGroq:
+        def __init__(self, api_key):
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+        def create(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content='{"done":true,"tool":"","arguments_json":"{}","answer":"ok"}'))])
+
+    groq_module.Groq = FakeGroq
+    groq_module.BadRequestError = type("BadRequestError", (Exception,), {})
+    monkeypatch.setitem(sys.modules, "groq", groq_module)
+    monkeypatch.setenv("GROQ_API_KEY", "fake")
+    result = complete_action("groq", "openai/gpt-oss-120b", [{"role": "user", "content": "test"}])
+    assert '"done":true' in result
+    assert captured["response_format"]["json_schema"]["strict"] is True
+    assert captured["reasoning_format"] == "hidden"
+
+
+def test_groq_agent_action_retries_json_validation_failure(monkeypatch):
+    import sys
+    from types import ModuleType, SimpleNamespace
+    from crosstoolguard.llm.providers import complete_action
+
+    formats = []
+
+    class FakeBadRequestError(Exception):
+        body = {"error": {"code": "json_validate_failed"}}
+
+    class FakeGroq:
+        def __init__(self, api_key):
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+        def create(self, **kwargs):
+            formats.append(kwargs["response_format"]["type"])
+            if len(formats) == 1:
+                raise FakeBadRequestError()
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content='{"done":true,"answer":"ok"}'))])
+
+    groq_module = ModuleType("groq")
+    groq_module.Groq = FakeGroq
+    groq_module.BadRequestError = FakeBadRequestError
+    monkeypatch.setitem(sys.modules, "groq", groq_module)
+    monkeypatch.setenv("GROQ_API_KEY", "fake")
+    assert '"done":true' in complete_action("groq", "openai/gpt-oss-120b", [{"role": "user", "content": "test"}])
+    assert formats == ["json_schema", "json_object"]

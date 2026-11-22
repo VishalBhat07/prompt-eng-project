@@ -30,6 +30,21 @@ def test_secret_exfil_critical():
     assert exfil[0].severity == "CRITICAL"
 
 
+def test_direct_secret_exfil_critical():
+    from crosstoolguard.detection.correlation import analyze
+
+    events = [
+        Event(event_id="direct-secret", timestamp=datetime.now(timezone.utc), session_id="S-DIRECT",
+              server="source", tool="read_file", event_type=EventType.TOOL_OUTPUT,
+              data_class=DataClass.SECRET),
+        Event(event_id="direct-send", timestamp=datetime.now(timezone.utc), session_id="S-DIRECT",
+              server="sink", tool="send_data", event_type=EventType.TOOL_CALL,
+              capabilities=["EXTERNAL_TRANSFER", "PRIVILEGED"], parent_id="direct-secret"),
+    ]
+    findings = analyze(events)
+    assert any(f.pattern == "direct_secret_exfiltration" for f in findings)
+
+
 def test_benign_chain_no_findings():
     from crosstoolguard.detection.correlation import analyze
 

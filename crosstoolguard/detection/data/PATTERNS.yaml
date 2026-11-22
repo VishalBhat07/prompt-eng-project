@@ -7,6 +7,20 @@
 #   trust: node trust level (HIGH | MED | LOW)
 # `query` selects candidate paths via find_paths (source/dest).
 patterns:
+  - name: direct_secret_exfiltration
+    severity: CRITICAL
+    query: {source_class: SECRET, dest_cap: EXTERNAL_TRANSFER}
+    stages:
+      - {data_classification: SECRET}
+      - {capability: EXTERNAL_TRANSFER}
+
+  - name: direct_credential_exfiltration
+    severity: CRITICAL
+    query: {source_class: CREDENTIAL, dest_cap: EXTERNAL_TRANSFER}
+    stages:
+      - {data_classification: CREDENTIAL}
+      - {capability: EXTERNAL_TRANSFER}
+
   - name: secret_exfiltration
     severity: CRITICAL
     query: {source_class: SECRET, dest_cap: EXTERNAL_TRANSFER}

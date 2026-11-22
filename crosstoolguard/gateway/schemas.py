@@ -51,6 +51,7 @@ class Event(BaseModel):
     event_type: EventType
     trust: Trust = Trust.MED
     data_class: DataClass = DataClass.PUBLIC
+    capabilities: list[str] = Field(default_factory=list)
     args_hash: str = ""
     output_preview: str = ""
     parent_id: str | None = None

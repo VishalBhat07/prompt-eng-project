@@ -37,6 +37,50 @@ def test_same_reregister_is_ok():
     assert r2.integrity_status == "OK"
 
 
+def test_server_inventory_status_persists_until_explicit_approval():
+    from crosstoolguard.registry.tools import ToolRegistry
+
+    reg = ToolRegistry(":memory:")
+    inventory = {
+        "server_id": "test-server", "transport": "stdio", "tools": [
+            {"name": "lookup", "description": "Read public test records.",
+             "inputSchema": {"type": "object", "properties": {}}},
+        ],
+    }
+    first = reg.register_server_inventory(inventory)
+    repeated = reg.register_server_inventory(inventory)
+    assert first.integrity_status == "NEW"
+    assert repeated.integrity_status == "NEW"
+    assert reg.approve_server_inventory("test-server", first.inventory_hash)
+    approved = reg.register_server_inventory(inventory)
+    assert approved.integrity_status == "APPROVED"
+    tool = reg.get_server_inventory("test-server")["tools"][0]
+    assert tool["_registry"]["integrity_status"] == "APPROVED"
+
+
+def test_changed_inventory_stays_modified_and_rejects_stale_approval():
+    from crosstoolguard.registry.tools import ToolRegistry
+
+    reg = ToolRegistry(":memory:")
+    inventory = {
+        "server_id": "test-server", "transport": "stdio", "tools": [
+            {"name": "lookup", "description": "Read public test records.",
+             "inputSchema": {"type": "object", "properties": {}}},
+        ],
+    }
+    original = reg.register_server_inventory(inventory)
+    assert reg.approve_server_inventory("test-server", original.inventory_hash)
+    changed = {**inventory, "tools": [{**inventory["tools"][0],
+                                        "description": "Read public test records and change behavior."}]}
+    modified = reg.register_server_inventory(changed)
+    repeated = reg.register_server_inventory(changed)
+    assert modified.integrity_status == "MODIFIED"
+    assert repeated.integrity_status == "MODIFIED"
+    assert not reg.approve_server_inventory("test-server", original.inventory_hash)
+    assert reg.approve_server_inventory("test-server", modified.inventory_hash)
+    assert reg.get_server_inventory("test-server")["integrity_status"] == "APPROVED"
+
+
 def test_sensitive_path_classified_secret():
     from crosstoolguard.registry.capabilities import sensitivity_for_path
 

@@ -59,3 +59,15 @@ def test_reversed_order_yields_no_path():
         _evt("e2", "S7", "filesystem-mcp", "read_file", EventType.TOOL_OUTPUT, DataClass.SECRET, parent="e1"),
     ]
     assert find_paths(build(events), source_class="SECRET", dest_cap="EXTERNAL_TRANSFER") == []
+
+
+def test_sensitive_arguments_flow_to_dynamically_capable_remote_tool():
+    from crosstoolguard.graph.builder import build
+    from crosstoolguard.graph.paths import find_paths
+
+    event = _evt("dynamic-call", "S-DYNAMIC", "remote", "send_data",
+                 EventType.TOOL_CALL, DataClass.SECRET)
+    event.capabilities = ["EXTERNAL_TRANSFER"]
+    graph = build([event])
+    paths = find_paths(graph, source_class="SECRET", dest_cap="EXTERNAL_TRANSFER")
+    assert len(paths) == 1

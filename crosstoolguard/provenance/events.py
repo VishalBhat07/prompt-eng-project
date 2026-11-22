@@ -24,6 +24,12 @@ SECRET_PATTERNS: list[tuple[str, str]] = [
 
 _ENTROPY_THRESHOLD = 4.5
 _ENTROPY_MIN_LEN = 40
+_TOKEN = re.compile(r'(?<![A-Za-z0-9])[A-Za-z0-9+/_=-]{40,}(?![A-Za-z0-9])')
+
+
+def _secret_token(token: str) -> bool:
+    return bool(re.search(r'[A-Za-z]', token) and re.search(r'[0-9]', token)
+                and shannon_entropy(token) > _ENTROPY_THRESHOLD)
 
 
 def shannon_entropy(text: str) -> float:
@@ -39,8 +45,7 @@ def classify_content(text: str) -> str:
     for pattern, data_class in SECRET_PATTERNS:
         if re.search(pattern, text):
             return data_class
-    stripped = re.sub(r"\s+", "", text)
-    if len(stripped) >= _ENTROPY_MIN_LEN and shannon_entropy(stripped) > _ENTROPY_THRESHOLD:
+    if any(_secret_token(match.group()) for match in _TOKEN.finditer(text)):
         return "SECRET"
     return "PUBLIC"
 
@@ -50,6 +55,7 @@ def redact(text: str) -> str:
     redacted = text
     for pattern, _ in SECRET_PATTERNS:
         redacted = re.sub(pattern, "[REDACTED]", redacted)
+    redacted = _TOKEN.sub(lambda match: '[REDACTED]' if _secret_token(match.group()) else match.group(), redacted)
     return redacted
 
 

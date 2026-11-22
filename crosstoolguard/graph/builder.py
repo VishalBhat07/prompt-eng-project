@@ -29,20 +29,22 @@ EXTERNAL = "external"
 def _tool_node(g: nx.DiGraph, event: Event) -> str:
     nid = f"tool:{event.tool}:{event.event_id}"
     if nid not in g:
+        capabilities = event.capabilities or sorted(extract_capabilities(event.tool, ""))
         g.add_node(nid, type=NodeType.TOOL.value, session_id=event.session_id,
                    timestamp=event.timestamp.isoformat(), tool=event.tool,
                    server=event.server,
-                   capabilities=sorted(extract_capabilities(event.tool, "")))
+                   capabilities=capabilities)
     return nid
 
 
 def _data_node(g: nx.DiGraph, event: Event, origin_tool: str) -> str:
     nid = f"data:{event.data_class.value}:{event.event_id}"
     if nid not in g:
+        origin_capabilities = event.capabilities or sorted(extract_capabilities(origin_tool, ""))
         g.add_node(nid, type=NodeType.DATA.value, session_id=event.session_id,
                    timestamp=event.timestamp.isoformat(),
                    data_class=event.data_class.value, origin_tool=origin_tool,
-                   origin_capabilities=sorted(extract_capabilities(origin_tool, "")))
+                   origin_capabilities=origin_capabilities)
     return nid
 
 
@@ -65,6 +67,15 @@ def build(events: list[Event]) -> nx.DiGraph:
         if event.event_type == EventType.TOOL_OUTPUT and event.data_class in _CLASSIFIED:
             data_nid = _data_node(g, event, origin_tool=event.tool)
             g.add_edge(tool_nid, data_nid, type=EdgeType.GENERATES.value)
+
+        if event.event_type == EventType.TOOL_CALL and event.data_class in _CLASSIFIED:
+            data_nid = f"data:{event.data_class.value}:{event.event_id}:arguments"
+            if data_nid not in g:
+                g.add_node(data_nid, type=NodeType.DATA.value, session_id=event.session_id,
+                           timestamp=event.timestamp.isoformat(), data_class=event.data_class.value,
+                           origin_tool="tool_arguments", origin_capabilities=[],
+                           source_event_id=event.event_id)
+            g.add_edge(data_nid, tool_nid, type=EdgeType.FLOWS_TO.value)
 
         if event.event_type == EventType.TOOL_CALL:
             parent = by_id.get(event.parent_id or "")

@@ -67,3 +67,46 @@ def complete(provider: str, model: str, messages: list[dict], max_tokens: int = 
             model=model, system=system, messages=convo, temperature=0,
             max_tokens=max_tokens).content[0].text or ""
     raise ValueError(f"unknown provider: {provider}")
+
+
+def complete_action(provider: str, model: str, messages: list[dict], max_tokens: int = 1200) -> str:
+    """Return a JSON action for an agent runner; keep other provider behavior unchanged."""
+    if provider != "groq":
+        return complete(provider, model, messages, max_tokens=max_tokens)
+    api_key = os.getenv(PROVIDERS[provider]["env"])
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY unset")
+    from groq import BadRequestError, Groq
+
+    action_schema = {
+        "type": "object", "additionalProperties": False,
+        "properties": {
+            "done": {"type": "boolean"},
+            "tool": {"type": "string"},
+            "arguments_json": {"type": "string"},
+            "answer": {"type": "string"},
+        },
+        "required": ["done", "tool", "arguments_json", "answer"],
+    }
+    client = Groq(api_key=api_key)
+    try:
+        response = client.chat.completions.create(
+            model=model, messages=messages, temperature=0, max_tokens=max_tokens,
+            response_format={"type": "json_schema", "json_schema": {
+                "name": "mcp_agent_action", "strict": True, "schema": action_schema}},
+            reasoning_format="hidden")
+    except BadRequestError as exc:
+        error = getattr(exc, "body", None)
+        code = error.get("error", {}).get("code") if isinstance(error, dict) else None
+        if code != "json_validate_failed":
+            raise
+        # Groq can fail to produce a strict-schema completion for a particular
+        # turn. Retry that turn once with JSON object mode; the runner still
+        # validates the selected tool and argument object before any call.
+        response = client.chat.completions.create(
+            model=model, messages=messages, temperature=0, max_tokens=max(max_tokens, 1600),
+            response_format={"type": "json_object"}, reasoning_format="hidden")
+    content = response.choices[0].message.content
+    if not content:
+        raise ValueError("model returned an empty JSON action")
+    return content
