@@ -7,6 +7,7 @@ import Findings from './pages/Findings';
 import Approvals from './pages/Approvals';
 import Benchmark from './pages/Benchmark';
 import Demo from './pages/Demo';
+import Inventory from './pages/Inventory';
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: '/approvals', element: <Approvals /> },
       { path: '/benchmark', element: <Benchmark /> },
       { path: '/demo', element: <Demo /> },
+      { path: '/inventory', element: <Inventory /> },
     ],
   },
 ]);

@@ -10,6 +10,7 @@ const LINKS = [
   ['/approvals', 'Approvals'],
   ['/benchmark', 'Benchmark'],
   ['/demo', 'Demo'],
+  ['/inventory', 'Inventory'],
 ];
 
 function Mark() {
@@ -28,7 +29,7 @@ export default function Shell() {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme ?? 'dark');
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem('verigraph-theme', theme); } catch { /* private mode */ }
+    try { localStorage.setItem('crosstoolguard-theme', theme); } catch { /* private mode */ }
   }, [theme]);
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -44,7 +45,7 @@ export default function Shell() {
         }}>
           <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', marginRight: 20 }}>
             <Mark />
-            <span style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.01em' }}>VeriGraph</span>
+            <span style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.01em' }}>CrossToolGuard</span>
           </NavLink>
           <div style={{ display: 'flex', gap: 2 }}>
             {LINKS.slice(1).map(([to, label]) => (

@@ -1,6 +1,8 @@
 {
-  "generated_by": "crosstoolguard.evaluation.experiments (live run)",
+  "generated_by": "scripts/export_dashboard_benchmark.py",
   "cases": 19,
+  "attack_cases": 8,
+  "benign_cases": 9,
   "detection_rate": 1.0,
   "false_positive_rate": 0.0,
   "cross_tool_gain": [
@@ -99,8 +101,21 @@
     }
   },
   "latency": {
-    "mean_s": 0.01,
-    "p95_s": 0.035,
-    "n": 16
+    "A-direct-basic": 0.000353900000845897,
+    "C-exfil-basic": 0.0004510000007940107,
+    "C-exfil-file-stage": 0.0006306000004769885,
+    "D-escalation-basic": 0.0011841999994430807,
+    "F-distributed-basic": 0.0014197000000422122,
+    "H-shadow-basic": 0.000854099999742175,
+    "I-creds-basic": 0.0005561999996643863,
+    "J-multi-basic": 0.0009643000003052293,
+    "N-search-read": 0.0004163999992670142,
+    "N-invoice-calc": 0.00027440000030765077,
+    "N-list-files": 0.00013169999965612078,
+    "N-store-local": 0.00025800000003073364,
+    "N-read-public": 0.00018060000002151355,
+    "N-add-multiply": 0.00021070000002509914,
+    "N-search-no-match": 0.00016370000048482325,
+    "N-read-then-search": 0.0002631999996083323
   }
 }

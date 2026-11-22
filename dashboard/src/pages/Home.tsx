@@ -4,23 +4,16 @@ import { useEffect, useState } from 'react';
 import BlurText from '../components/bits/BlurText';
 import CountUp from '../components/bits/CountUp';
 
-const FEED = [
-  'S-7b68 · read_file → ALLOW',
-  'S-7b68 · store_file → ALLOW',
-  'S-7b68 · upload_file → BLOCK · secret_exfiltration',
-  'S-9f02 · search → ALLOW',
-];
-
 function LiveLine() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setI((v) => (v + 1) % FEED.length), 2400);
-    return () => clearInterval(id);
-  }, []);
+  const [latest, setLatest] = useState('No recorded sessions yet');
+  useEffect(() => { fetch('/api/sessions').then((r) => r.json()).then((body) => {
+    const row = body.sessions?.at(-1);
+    if (row) setLatest(`${row.id} · ${row.events} events · ${row.blocked} blocked`);
+  }).catch(() => setLatest('Gateway unavailable')); }, []);
   return (
     <div className="mono" aria-live="off" style={{ fontSize: 13, color: 'var(--faint)' }}>
-      <span style={{ color: 'var(--clean)' }}>● live</span>
-      <span style={{ marginLeft: 12 }}>{FEED[i]}</span>
+      <span style={{ color: 'var(--clean)' }}>● sessions</span>
+      <span style={{ marginLeft: 12 }}>{latest}</span>
     </div>
   );
 }
@@ -29,18 +22,18 @@ const STAGES: [string, string][] = [
   ['Capture', 'Every tool call and output becomes a typed event.'],
   ['Graph', 'Events link into one temporal graph per session.'],
   ['Analyze', 'Patterns, semantics, and capabilities score each path.'],
-  ['Score', 'Risk 0–100 against calibrated policy bands.'],
+  ['Score', 'Heuristic path scores guide configured policy decisions.'],
   ['Decide', 'Ambiguous cases ask a human; attacks are blocked.'],
 ];
 
 function Proof() {
-  const [d, setD] = useState<{ detection_rate: number; false_positive_rate: number; latency: { p95_s: number } } | null>(null);
+  const [d, setD] = useState<{ detection_rate: number; false_positive_rate: number; cross_tool_gain: string[]; latency: { p95_s: number } } | null>(null);
   useEffect(() => { fetch('/data/benchmark.json').then((r) => r.json()).then(setD).catch(() => {}); }, []);
   const stats: [string, number, string, string][] = [
-    ['Detection', d ? Math.round(d.detection_rate * 100) : 0, '%', '8 of 8 targeted attacks'],
-    ['False positives', d ? Math.round(d.false_positive_rate * 100) : 0, '%', '0 of 9 benign flagged'],
-    ['Cross-tool-only catches', 7, '', 'invisible to single-tool checks'],
-    ['Analyze p95', d ? Math.round(d.latency.p95_s * 1000) : 0, ' ms', 'of a 150 ms budget'],
+    ['Detection', d ? Math.round(d.detection_rate * 100) : 0, '%', 'synthetic trace benchmark'],
+    ['False positives', d ? Math.round(d.false_positive_rate * 100) : 0, '%', 'synthetic trace benchmark'],
+    ['Cross-tool-only catches', d?.cross_tool_gain.length ?? 0, '', 'synthetic trace benchmark'],
+    ['Analyze p95', d ? Math.round(d.latency.p95_s * 1000) : 0, ' ms', 'synthetic trace benchmark'],
   ];
   return (
     <div>
@@ -70,12 +63,13 @@ export default function Home() {
         <BlurText tag="h1" className="hero-blur" delay={90}
           text="Detect the attack path, not just the sentence." />
         <p className="sub" style={{ maxWidth: 620 }}>
-          VeriGraph watches agent tool sessions, links actions into a graph,
+          CrossToolGuard watches agent tool sessions, links actions into a graph,
           and blocks coordinated exfiltration that looks innocent one tool at a time.
         </p>
         <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-          <Link to="/graph" className="btn-primary" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
+          <Link to="/sessions" className="btn-primary" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
           <Link to="/demo" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Run the demo</Link>
+          <Link to="/inventory" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Review inventory</Link>
         </div>
         <div style={{ marginTop: 36, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
           <LiveLine />
@@ -86,7 +80,7 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
         style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderTop: '1px solid var(--line)' }}>
         <div style={{ padding: '32px 32px 32px 0' }}>
-          <div className="eyebrow" style={{ marginBottom: 12 }}>Without VeriGraph</div>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>Without CrossToolGuard</div>
           <p className="mono" style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 2 }}>
             read_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
             store_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
@@ -95,7 +89,7 @@ export default function Home() {
           <p style={{ marginTop: 12, color: 'var(--muted)', fontSize: 15 }}>The secret leaves. Nothing fires.</p>
         </div>
         <div style={{ padding: '32px 0 32px 32px', borderLeft: '1px solid var(--line)' }}>
-          <div className="eyebrow" style={{ marginBottom: 12 }}>With VeriGraph</div>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>With CrossToolGuard</div>
           <p className="mono" style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 2 }}>
             read_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
             store_file <span style={{ color: 'var(--faint)' }}>→ ALLOW</span><br />
@@ -130,6 +124,8 @@ export default function Home() {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 0, borderTop: '1px solid var(--line)' }}>
           {[
+            ['Direct tool poisoning', 'A poisoned description steers the first call.'],
+            ['Indirect injection', 'Untrusted content carries the instruction.'],
             ['Cross-tool exfiltration', 'Read secret, stage it, upload it.'],
             ['Distributed poisoning', 'One instruction split across three tools.'],
             ['Capability escalation', 'Read plus write plus send becomes exfil.'],
@@ -172,13 +168,13 @@ export default function Home() {
         <p className="sub" style={{ fontSize: 16, marginTop: 8 }}>Three tool calls. Sixty seconds. One blocked exfiltration.</p>
         <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center' }}>
           <Link to="/demo" className="btn-primary" style={{ textDecoration: 'none', borderRadius: 8 }}>Run the demo</Link>
-          <Link to="/graph" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
+          <Link to="/sessions" className="btn-ghost hairline" style={{ textDecoration: 'none', borderRadius: 8 }}>Open console</Link>
         </div>
       </section>
 
       <section style={{ borderTop: '1px solid var(--line)', padding: '56px 0' }}>
         <div className="eyebrow" style={{ marginBottom: 20 }}>Architecture</div>
-        <svg viewBox="0 0 920 120" role="img" aria-label="VeriGraph layered architecture" style={{ width: '100%' }}>
+        <svg viewBox="0 0 920 120" role="img" aria-label="CrossToolGuard layered architecture" style={{ width: '100%' }}>
           {['Agent', 'Proxy', 'Graph', 'Analyze', 'Policy'].map((l, i) => (
             <g key={l}>
               <text x={30 + i * 180} y={30} fill="#63636b" fontSize={12} fontFamily="monospace">0{i + 1}</text>
@@ -197,7 +193,7 @@ export default function Home() {
 
       <footer style={{ borderTop: '1px solid var(--line)', padding: '28px 0 8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--faint)' }}>
-          <span>VeriGraph - graph-based runtime defense for tool-using agents</span>
+          <span>CrossToolGuard - graph-based runtime defense for tool-using agents</span>
           <span className="mono">repo · docs · course project</span>
         </div>
       </footer>

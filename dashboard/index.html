@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VeriGraph - detect the attack path</title>
+    <title>CrossToolGuard - detect the attack path</title>
     <script>
       try {
-        document.documentElement.dataset.theme = localStorage.getItem('verigraph-theme') || 'dark';
+        document.documentElement.dataset.theme =
+          localStorage.getItem('crosstoolguard-theme') || localStorage.getItem('verigraph-theme') || 'dark';
       } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

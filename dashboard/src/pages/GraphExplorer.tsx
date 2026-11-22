@@ -9,13 +9,14 @@ const LANE: Record<string, number> = { SERVER: 0, TOOL: 1, DATA: 2, INSTRUCTION:
 const TYPES = ['SERVER', 'TOOL', 'DATA', 'INSTRUCTION', 'DESTINATION'];
 
 function label(n: { type: string; [k: string]: unknown }) {
-  return `${n.type}: ${String(n.tool ?? n.data_class ?? n.name ?? n.server ?? '')}`.slice(0, 42);
+  return `${n.hypothetical ? 'POSSIBLE ' : ''}${n.type}: ${String(n.tool ?? n.origin_tool ?? n.data_class ?? n.name ?? n.server ?? '')}`.slice(0, 52);
 }
 
 export default function GraphExplorer() {
   const [params, setParams] = useSearchParams();
-  const session = params.get('session') ?? 'S-DEMO';
+  const session = params.get('session') ?? '';
   const [data, setData] = useState<SessionData | null>(null);
+  const [error, setError] = useState('');
   const [radial, setRadial] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -26,8 +27,21 @@ export default function GraphExplorer() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
 
-  useEffect(() => { loadSession(session).then(setData).catch(() => {}); }, [session]);
-  const hot = useMemo(() => new Set((data?.paths ?? []).flatMap((p) => p.node_ids)), [data]);
+  useEffect(() => {
+    setData(null); setError('');
+    if (!session) return;
+    let active = true;
+    const refresh = () => loadSession(session).then((next) => {
+      if (active) { setData((previous) => JSON.stringify(previous) === JSON.stringify(next) ? previous : next); setError(''); }
+    }).catch((e: Error) => { if (active) setError(e.message); });
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 4000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [session]);
+  const hot = useMemo(() => new Set([
+    ...(data?.paths ?? []).flatMap((p) => p.node_ids),
+    ...(data?.signals ?? []).map((signal) => signal.node_id),
+  ]), [data]);
   const times = useMemo(() => {
     const ts = [...new Set((data?.nodes ?? []).map((n) => String(n.timestamp ?? '')))].sort();
     return ts;
@@ -77,9 +91,9 @@ export default function GraphExplorer() {
         id: n.id, position: pos,
         data: { label: label(n) },
         style: {
-          background: isHot ? 'rgba(255,99,111,0.08)' : 'var(--bg-1)',
+          background: isHot || n.type === 'INSTRUCTION' ? 'rgba(255,99,111,0.08)' : 'var(--bg-1)',
           color: 'var(--ink)',
-          border: isHot ? '1.5px solid var(--crit)' : '1px solid var(--line)',
+          border: n.hypothetical ? '1.5px dashed var(--high)' : isHot || n.type === 'INSTRUCTION' ? '1.5px solid var(--crit)' : '1px solid var(--line)',
           borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
           fontFamily: 'var(--font-mono)', opacity: dim ? 0.22 : 1,
         },
@@ -94,7 +108,7 @@ export default function GraphExplorer() {
       labelStyle: { fill: 'var(--faint)', fontSize: 10, fontFamily: 'var(--font-mono)' },
       labelBgStyle: { fill: 'var(--bg-0)' },
       animated: e.type === 'SENDS' || e.type === 'FLOWS_TO',
-      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'var(--edge-faint)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2 },
+      style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type.startsWith('POSSIBLE_') ? 'var(--high)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'var(--edge-faint)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2, strokeDasharray: e.type.startsWith('POSSIBLE_') ? '6 5' : undefined },
     })), [data, visIds]);
 
   const sel = data?.nodes.find((n) => n.id === selected) ?? null;
@@ -105,8 +119,29 @@ export default function GraphExplorer() {
       <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
         <span className="eyebrow">Inspect</span>
         <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Graph explorer</h1>
-        <p className="sub" style={{ fontSize: 16 }}>One graph per session. The red path is the attack - everything else is context.</p>
+        <p className="sub" style={{ fontSize: 16 }}>One graph per session. Solid edges show observed activity; dashed edges show possible harm that has not occurred.</p>
+        <p className="mono" style={{ color: 'var(--faint)', fontSize: 12, marginTop: 10 }}>
+          solid = observed · red = suspicious output signal or detected path · dashed orange = possible harm (not evidence the agent used it)
+        </p>
       </header>
+      {!session && <p>Choose a run from Sessions to inspect its graph.</p>}
+      {error && <p role="alert">{error}</p>}
+      {(data?.potential_paths?.length ?? 0) > 0 && <section style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
+        <strong>Possible harm paths (dashed graph edges)</strong>
+        <p>These paths are inferred from approved tool capabilities. They do not mean the agent used those tools or that CrossToolGuard blocked them.</p>
+        {data?.potential_paths?.map((path, index) => <p key={`${path.source}-${path.destination}-${index}`} className="mono">
+          {path.source} → {path.destination}{path.trigger_events.length > 0 ? ` · untrusted output observed from ${path.trigger_events.map((event) => event.tool).join(', ')}` : ''}
+        </p>)}
+      </section>}
+      {(data?.signals?.length ?? 0) > 0 && <section style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
+        <strong style={{ color: 'var(--crit)' }}>Suspicious tool output observed</strong>
+        {data?.signals?.map((signal) => <p key={signal.node_id} className="mono">{signal.origin_tool}: {signal.explanation}</p>)}
+      </section>}
+      {data?.report && <section style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
+        <strong>Agent path · {data.report.outcome}</strong>
+        <p className="mono" style={{ color: 'var(--muted)', fontSize: 13 }}>{data.report.provider} · {data.report.model} · {data.report.policy}</p>
+        <ol>{data.report.calls.map((call, index) => <li key={`${call.tool}-${index}`} className="mono">{call.tool} → {call.verdict ?? 'ERROR'}</li>)}</ol>
+      </section>}
 
       <div style={{
         display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',

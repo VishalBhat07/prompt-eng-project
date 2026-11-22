@@ -9,8 +9,14 @@ const GRID = 'rgba(128,128,128,0.25)';
 
 export default function Benchmark() {
   const [d, setD] = useState<BenchDoc | null>(null);
+  const [runs, setRuns] = useState<{ session_id: string; outcome: string; policy: string; provider: string; model: string; calls: { tool: string; verdict?: string }[] }[]>([]);
   const [table, setTable] = useState(false);
+  const [runsError, setRunsError] = useState('');
+  const loadRuns = () => fetch('/api/runs').then((r) => r.json())
+    .then((body) => { setRuns(body.runs ?? []); setRunsError(''); })
+    .catch(() => setRunsError('Could not load recorded runs from the gateway.'));
   useEffect(() => { fetch('/data/benchmark.json').then((r) => r.json()).then(setD).catch(() => {}); }, []);
+  useEffect(() => { void loadRuns(); }, []);
   if (!d) return <p style={{ color: 'var(--faint)' }}>Loading benchmark.json…</p>;
   const baseRows = Object.entries(d.baselines).map(([k, v]) => ({ name: k, caught: v.caught }));
   const ablRows = Object.entries(d.ablation).map(([k, v]) => ({ name: k.replace('-', ' +'), caught: v.caught }));
@@ -20,7 +26,7 @@ export default function Benchmark() {
         <span className="eyebrow">Evidence</span>
         <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Benchmark</h1>
         <p className="sub" style={{ fontSize: 16 }}>
-          19 cases · detection {Math.round(d.detection_rate * 100)}% · FPR {Math.round(d.false_positive_rate * 100)}%
+          Synthetic trace benchmark: {d.cases} cases ({d.attack_cases ?? 8} attack, {d.cases - (d.attack_cases ?? 8)} integrity/provenance/no-finding) · detection {Math.round(d.detection_rate * 100)}% · FPR {Math.round(d.false_positive_rate * 100)}%. Recorded model runs are listed separately below.
         </p>
       </header>
       <div style={{ display: 'flex', gap: 12, padding: '12px 0', borderTop: '1px solid var(--line)' }}>
@@ -29,14 +35,14 @@ export default function Benchmark() {
       </div>
       {table ? (
         <div className="mono" style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 2, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
-          {baseRows.map((r) => <div key={r.name}>{r.name}: {r.caught}/8</div>)}
-          {ablRows.map((r) => <div key={r.name}>{r.name}: {r.caught}/8</div>)}
+          {baseRows.map((r) => <div key={r.name}>{r.name}: {r.caught}/{d.attack_cases ?? 8}</div>)}
+          {ablRows.map((r) => <div key={r.name}>{r.name}: {r.caught}/{d.attack_cases ?? 8}</div>)}
           <div>latency mean {d.latency.mean_s}s · p95 {d.latency.p95_s}s (n={d.latency.n})</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 40, borderTop: '1px solid var(--line)', paddingTop: 24 }}>
           <section>
-            <h3>Baselines vs VeriGraph <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· attacks caught / 8</span></h3>
+            <h3>Baselines vs CrossToolGuard <span style={{ color: 'var(--faint)', fontWeight: 400 }}>· attacks caught / {d.attack_cases ?? 8}</span></h3>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={baseRows}>
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
@@ -73,6 +79,16 @@ export default function Benchmark() {
           </section>
         </div>
       )}
+      <section style={{ marginTop: 40, borderTop: '1px solid var(--line)', paddingTop: 24 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <h2>Recorded runs</h2>
+          <button onClick={() => void loadRuns()} style={{ marginLeft: 'auto', fontSize: 13 }}>Refresh runs</button>
+        </div>
+        <p>Each row links to its observed path. Provider `simulated` means the agent's choices were scripted. These runs are not part of the synthetic trace percentages above.</p>
+        {runsError && <p role="alert">{runsError}</p>}
+        {runs.map((run) => <p key={run.session_id} className="mono"><a href={`/graph?session=${encodeURIComponent(run.session_id)}`}>{run.session_id}</a> · {run.provider} · {run.policy} · {run.outcome} · {run.calls?.length ?? 0} calls · {run.model}</p>)}
+        {runs.length === 0 && !runsError && <p>No recorded runs yet.</p>}
+      </section>
     </div>
   );
 }
