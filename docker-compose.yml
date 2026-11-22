@@ -16,6 +16,13 @@ services:
     environment:
       - MODE=monitor
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - MCP_INVENTORY_API_ENABLED=${MCP_INVENTORY_API_ENABLED:-false}
+      - MCP_INVENTORY_ALLOWED_HOSTS=${MCP_INVENTORY_ALLOWED_HOSTS:-}
+      - MCP_INVENTORY_ALLOWED_PORTS=${MCP_INVENTORY_ALLOWED_PORTS:-443}
+      - MCP_INVENTORY_ALLOW_PRIVATE_NETWORK=${MCP_INVENTORY_ALLOW_PRIVATE_NETWORK:-false}
+      - REGISTRY_DB=${REGISTRY_DB:-/app/data/registry.db}
+    volumes:
+      - ./data:/app/data
     mem_limit: 2g
     networks:
       - ctg-lab

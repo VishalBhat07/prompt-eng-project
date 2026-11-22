@@ -10,6 +10,8 @@ blocks the chain (`ALLOW, ALLOW, BLOCK`) instead of judging tools in isolation.
 > Full idea: `CrossToolGuard_Full_Detailed_Project_Document.md` · Plan: `docs/superpowers/plans/`
 > Threat model: `docs/THREAT_MODEL.md` · Dashboard API: `docs/API_CONTRACT.md`
 
+For the current Windows dashboard walkthrough with real multi-server Groq runs, saved session graphs, and the controlled blocked-path demo, follow [DASHBOARD_DEMO.md](docs/DASHBOARD_DEMO.md). The Benchmark page distinguishes the synthetic trace benchmark from recorded model runs; repeated model-run research evaluation remains in progress.
+
 ## Architecture
 
 ```
@@ -53,6 +55,27 @@ cd dashboard && npm run dev   # → http://127.0.0.1:5173 (proxies /api + /ws to
 
 Docker alternative: `docker compose up --build` (proxy on :8000, isolated `ctg-lab` net).
 
+## Inventory an MCP server
+
+CrossToolGuard can make a read-only inventory of an MCP server over Streamable HTTP or stdio.
+Create a JSON connection profile and follow [MCP_INVENTORY.md](docs/MCP_INVENTORY.md).
+The command saves complete tool definitions and fingerprints to `registry.db`; the dashboard
+shows saved snapshots at `/inventory`. Inventory does not call tools or prove server behavior safe.
+Only launch stdio servers inside an isolated environment, and do not supply production credentials.
+
+The current local demo registry contains **24 snapshots**, **20 approved servers**, and **80 approved tools** from public documentation, code-search, repository, diagram, agent-skill, environmental, municipal, coworking, and crypto-data MCP services. The Run a task page scopes each run to selected servers so a free-tier model is not sent the entire catalog at once. Four snapshots remain unapproved for documented smoke-test failures or CRITICAL metadata risk. Refresh with `scripts/onboard_public_catalog.py --approve`; see [DASHBOARD_DEMO.md](docs/DASHBOARD_DEMO.md) for the catalog table and manual agent prompts.
+
+For model-backed prompt checks, `python -m crosstoolguard.evaluation.prompt_runner --provider groq`
+runs the bundled benign/poisoned cases against the shipped synthetic MCP fixture. You can pass
+`--task` and `--system-prompt-file` to evaluate your own prompts against that fixture. The runner
+does not execute arbitrary server code; use synthetic prompts only, since prompts are sent to the
+configured model provider. For arbitrary inventoried servers, `python -m
+crosstoolguard.evaluation.prompt_preflight --inventory inventory.json --task "..." --forbid-tool
+tool_name` screens the model's proposed tool action without connecting to or invoking the server.
+After reviewing and pinning a snapshot, an agent can call approved Streamable HTTP tools through
+`POST /api/mcp/tools/call`; enable `MODE=enforcing` for pre-call policy decisions. See
+[MCP_INVENTORY.md](docs/MCP_INVENTORY.md) for constraints and examples.
+
 ## 60-second demo (the thesis, live)
 
 ```bash
@@ -70,8 +93,8 @@ curl -s "http://localhost:8000/api/alerts?session=$S" | python -m json.tool | he
 ## Test & measure
 
 ```bash
-python -m pytest tests/ -v          # 58 tests: schemas, proxy, registry, provenance,
-                                    # analyzer, graph, detection, policy, API, benchmark
+python -m pytest tests/ -q          # 103 passed, 1 skipped: schemas, proxy, registry,
+                                    # provenance, analyzer, graph, detection, policy, API, benchmark
 python -c "from crosstoolguard.evaluation.benchmark import run_all
 print(len(run_all()), 'cases')"     # 19-case benchmark (A–J attacks + N benign)
 python -c "from crosstoolguard.evaluation.experiments import run_baselines, run_ablation
@@ -88,8 +111,9 @@ privilege reached) is recorded as an expected miss.
 ```
 crosstoolguard/
   gateway/      proxy.py (monitor/enforcing, fail-closed, approvals) · session.py
-                transport.py (lab adapter; real MCP transport lands here) · schemas.py
-  registry/     tools.py (SQLite, NEW/OK/MODIFIED) · capabilities.py · integrity.py
+                transport.py (lab adapter) · schemas.py · run_store.py
+  registry/     tools.py (SQLite, NEW/OK/MODIFIED) · mcp_inspector.py · assessment.py
+                capabilities.py · integrity.py
   provenance/   provenance.py · lineage.py (SQLite parent chains) · events.py (classify/redact)
   analyzer/     semantic.py (regex → MiniLM → keywords → Groq prompt-guard) · instruction.py
   graph/        builder.py (session-partitioned DiGraph) · paths.py · nodes.py · edges.py
@@ -99,7 +123,7 @@ crosstoolguard/
   evaluation/   BENCHMARK.yaml · benchmark.py · metrics.py · experiments.py (baselines/ablation/latency)
 lab/            Groq-first ReAct agent + 4 benign servers + synthetic data only
 dashboard/      Vite + React + React Flow (MVP UI; full polished website planned post-evaluation)
-tests/          mirrors src, 58 tests, TDD throughout
+tests/          mirrors src, 103 passing tests plus 1 optional embedding-layer skip
 ```
 
 ## Safety & conventions

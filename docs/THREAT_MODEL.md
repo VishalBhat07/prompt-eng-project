@@ -1,7 +1,8 @@
 # Threat Model v1 - CrossToolGuard
 
-> Scope: semester lab prototype. All attacks use synthetic data in an
+> Current implementation: semester lab prototype. All attacks use synthetic data in an
 > isolated Docker network. No real secrets, keys, or PII are ever used.
+> Expansion target: see `docs/superpowers/plans/2026-11-21-mcp-preflight-research-roadmap.md`.
 
 ## 1. System components
 
@@ -63,3 +64,11 @@ Provenance MUST preserve the original LOW source through transforms
   raw secret values; tool-output previews truncated to 500 chars, redacted.
 - Dashboard shows labels and paths, never secret contents.
 - No real `.env`, SSH keys, or PII in repo, logs, or screenshots.
+
+## 7. Expanded research scope (planned)
+
+The next development phases add pre-use assessment for user-supplied MCP servers and runtime defense across their tool chains. Tool definitions, schemas, annotations, outputs, and resources are treated as LOW-trust input. A nice description or clean metadata scan is not evidence that the server's implementation is safe.
+
+Assessment runs must use a restricted sandbox, synthetic data, fake credentials, and mock destinations. No production credentials or uncontrolled third-party side effects are allowed. Reports must identify whether each result came from metadata review, source/package review, sandbox behavior, or runtime monitoring, and must disclose blind spots when the process or network effects were not observed.
+
+This project does not claim that a finite test suite can prove an arbitrary MCP server safe. It measures detection and task impact for the stated threat model and test corpus. Dormant, time-triggered, and environment-dependent behavior remains a limitation; least privilege and runtime controls remain necessary.
