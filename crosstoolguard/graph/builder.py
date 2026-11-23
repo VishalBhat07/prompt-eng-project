@@ -8,6 +8,7 @@ co-occurrence:
 - Tool GENERATES Data (classified outputs; SECRET/CREDENTIAL only -
   PUBLIC outputs add no security signal)
 - Data FLOWS_TO Tool (call whose parent is a classified output)
+- Tool DEPENDS_ON Tool (recorded parent → child)
 - Tool INFLUENCES Tool (consecutive calls: temporal order backbone)
 - Tool SENDS Destination (EXTERNAL_TRANSFER-capable tools)
 - Tool READS Data (calls whose arguments reference sensitive paths)
@@ -53,7 +54,7 @@ def build(events: list[Event]) -> nx.DiGraph:
     if len(sessions) > 1:
         raise ValueError(f"graph spans sessions {sorted(sessions)}; build one graph per session")
     g = nx.DiGraph()
-    by_id = {e.event_id: e for e in events}
+    previous_events: dict[str, Event] = {}
     prev_tool: str | None = None
 
     for event in sorted(events, key=lambda e: e.timestamp):
@@ -77,16 +78,18 @@ def build(events: list[Event]) -> nx.DiGraph:
                            source_event_id=event.event_id)
             g.add_edge(data_nid, tool_nid, type=EdgeType.FLOWS_TO.value)
 
-        if event.event_type == EventType.TOOL_CALL:
-            parent = by_id.get(event.parent_id or "")
-            if (parent is not None and parent.event_type == EventType.TOOL_OUTPUT
+        parent = previous_events.get(event.parent_id or "")
+        if parent is not None:
+            g.add_edge(_tool_node(g, parent), tool_nid, type=EdgeType.DEPENDS_ON.value)
+            if (event.event_type == EventType.TOOL_CALL and parent.event_type == EventType.TOOL_OUTPUT
                     and parent.data_class in _CLASSIFIED):
                 data_nid = _data_node(g, parent, origin_tool=parent.tool)
                 g.add_edge(data_nid, tool_nid, type=EdgeType.FLOWS_TO.value)
 
-        if prev_tool is not None and prev_tool != tool_nid:
+        if prev_tool is not None and prev_tool != tool_nid and not g.has_edge(prev_tool, tool_nid):
             g.add_edge(prev_tool, tool_nid, type=EdgeType.INFLUENCES.value)
         prev_tool = tool_nid
+        previous_events[event.event_id] = event
 
         caps = g.nodes[tool_nid]["capabilities"]
         if "EXTERNAL_TRANSFER" in caps:

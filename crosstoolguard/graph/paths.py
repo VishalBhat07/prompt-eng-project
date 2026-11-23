@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import networkx as nx
 
+from crosstoolguard.graph.edges import EdgeType
 from crosstoolguard.graph.nodes import NodeType
 
 
@@ -24,6 +25,11 @@ def find_paths(graph: nx.DiGraph, *, source_class: str | None = None,
     if source_class is not None:
         sources = [n for n, d in graph.nodes(data=True)
                    if d.get("type") == NodeType.DATA.value and d.get("data_class") == source_class]
+        # Temporal adjacency is useful for the timeline but establishes no data flow.
+        original_edges = graph.edges
+        graph = nx.subgraph_view(
+            graph, filter_edge=lambda start, end: original_edges[start, end].get("type") != EdgeType.INFLUENCES.value
+        )
     else:
         sources = [n for n, d in graph.nodes(data=True)
                    if d.get("type") == NodeType.INSTRUCTION.value and d.get("trust") == source_trust]

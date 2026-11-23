@@ -71,3 +71,17 @@ def test_sensitive_arguments_flow_to_dynamically_capable_remote_tool():
     graph = build([event])
     paths = find_paths(graph, source_class="SECRET", dest_cap="EXTERNAL_TRANSFER")
     assert len(paths) == 1
+
+
+def test_public_result_does_not_inherit_unrelated_restricted_data_from_event_order():
+    from crosstoolguard.graph.builder import build
+    from crosstoolguard.graph.paths import find_paths
+
+    events = [
+        _evt("e1", "S1", "catalog", "lookup_record", EventType.TOOL_OUTPUT, DataClass.SECRET),
+        _evt("e2", "S1", "workspace", "format_record", EventType.TOOL_CALL, parent="e1"),
+        _evt("e3", "S1", "catalog", "lookup_public", EventType.TOOL_CALL),
+        _evt("e4", "S1", "catalog", "lookup_public", EventType.TOOL_OUTPUT, parent="e3"),
+        _evt("e5", "S1", "delivery", "upload_file", EventType.TOOL_CALL, parent="e4"),
+    ]
+    assert find_paths(build(events), source_class="SECRET", dest_cap="EXTERNAL_TRANSFER") == []
