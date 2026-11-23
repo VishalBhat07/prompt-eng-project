@@ -22,6 +22,7 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/runs/
+data/evaluation/
 data/public-call-check.json
 data/public-catalog*-report.json
 groq-three-server-*-report.json
