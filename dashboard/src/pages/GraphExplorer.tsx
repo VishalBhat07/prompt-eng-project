@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, MiniMap, type Edge, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { RiskMeter, SeverityBadge } from '../components/Severity';
+import SingleToolGraph from '../components/SingleToolGraph';
+import { agentOverlay } from '../data/agentGraph';
 import { loadSession, type SessionData } from '../data/provider';
 
 const LANE: Record<string, number> = { SERVER: 0, TOOL: 1, DATA: 2, INSTRUCTION: 2, DESTINATION: 3 };
@@ -90,9 +92,10 @@ export default function GraphExplorer() {
         : { x: order * 220, y: lane * 180 };
       const dim = (focus && !focus.includes(n.id)) || (hovered && hovered !== n.id && !adj.get(hovered)?.has(n.id));
       const isHot = hot.has(n.id);
+      const isBlocked = data?.blocks?.some((block) => block.call_node_id === n.id);
       return {
         id: n.id, position: pos,
-        data: { label: label(n) },
+        data: { label: isBlocked ? <>{label(n)}<br />Proposed call · BLOCK</> : label(n) },
         style: {
           background: isHot || n.type === 'INSTRUCTION' ? 'rgba(255,99,111,0.08)' : 'var(--bg-1)',
           color: 'var(--ink)',
@@ -102,7 +105,7 @@ export default function GraphExplorer() {
         },
       };
     });
-  }, [visible, radial, hot, focus, hovered, adj]);
+  }, [visible, radial, hot, focus, hovered, adj, data?.blocks]);
 
   const flowEdges: Edge[] = useMemo(() => (data?.edges ?? [])
     .filter((e) => visIds.has(e.source) && visIds.has(e.target))
@@ -115,6 +118,8 @@ export default function GraphExplorer() {
     })), [data, visIds]);
 
   const sel = data?.nodes.find((n) => n.id === selected) ?? null;
+  const agent = useMemo(() => data
+    ? agentOverlay(data, flowNodes, (tool, eventId) => `tool:${tool}:${eventId}`) : null, [data, flowNodes]);
   const selFindings = data?.paths.filter((p) => selected && p.node_ids.includes(selected)) ?? [];
 
   return (
@@ -122,7 +127,7 @@ export default function GraphExplorer() {
       <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
         <span className="eyebrow">Inspect</span>
         <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Graph explorer</h1>
-        <p className="sub" style={{ fontSize: 16 }}>One graph per session. Solid edges show observed activity; dashed edges show possible harm that has not occurred.</p>
+        <p className="sub" style={{ fontSize: 16 }}>Two views of the same session. The single-tool detector reviews saved output previews. CrossToolGuard shows session evidence and gateway decisions.</p>
         <p className="mono" style={{ color: 'var(--faint)', fontSize: 12, marginTop: 10 }}>
           solid = observed · red = suspicious output signal or detected path · dashed orange = possible harm (not evidence the agent used it)
         </p>
@@ -158,7 +163,7 @@ export default function GraphExplorer() {
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <input type="checkbox" checked={suspOnly} onChange={(e) => setSuspOnly(e.target.checked)} /> Suspicious only
         </label>
-        <span style={{ display: 'flex', gap: 10 }}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {TYPES.map((t) => (
             <label key={t} style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 12.5 }}>
               <input type="checkbox" checked={types.has(t)}
@@ -168,9 +173,15 @@ export default function GraphExplorer() {
         </span>
       </div>
 
+      {data && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 16 }}>
+      <SingleToolGraph data={data} />
+      <section aria-label="CrossToolGuard session graph" style={{ minWidth: 0 }}>
+      <h2>CrossToolGuard session graph</h2>
+      <p>Session links show the evidence used by policy. Dashed orange edges show possible paths.</p>
       <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-0)' }}>
         <div style={{ height: 560 }}>
-          <ReactFlow nodes={flowNodes} edges={flowEdges} fitView
+          <ReactFlow nodes={agent ? [...flowNodes, agent.node] : flowNodes}
+            edges={agent ? [...flowEdges, ...agent.edges] : flowEdges} fitView
             onNodeClick={(_, n) => { setSelected(n.id); setFocus(null); }}
             onNodeMouseEnter={(_, n) => setHovered(n.id)}
             onNodeMouseLeave={() => setHovered(null)}>
@@ -187,7 +198,7 @@ export default function GraphExplorer() {
             {playing ? '❚❚' : '▶'}
           </button>
           <input type="range" min={0} max={Math.max(0, times.length - 1)} value={Math.max(0, tick)}
-            onChange={(e) => { setTick(Number(e.target.value)); setPlaying(false); }} style={{ flex: 1 }} aria-label="replay position" />
+            onChange={(e) => { setTick(Number(e.target.value)); setPlaying(false); }} style={{ flex: 1, minWidth: 0 }} aria-label="replay position" />
           <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="replay speed">
             <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
           </select>
@@ -196,6 +207,8 @@ export default function GraphExplorer() {
           </span>
         </div>
       </div>
+      </section>
+      </div>}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
         {(data?.paths ?? []).map((p) => (

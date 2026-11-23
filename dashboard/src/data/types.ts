@@ -12,6 +12,8 @@ export interface SessionSummary {
 export interface SessionData {
   session: string; nodes: GraphNode[]; edges: GraphEdge[];
   paths: AttackPath[]; events: Record<string, unknown>[];
+  blocks?: { id: string; server: string; tool: string; call_node_id: string | null }[];
+  single_tool?: { status: 'ready'; evaluated: number; flagged_event_ids: string[] } | { status: 'unavailable' };
   potential_paths?: { source: string; destination: string; trigger_events: { event_id: string; tool: string; server: string }[]; explanation: string }[];
   signals?: { node_id: string; origin_tool: string; explanation: string }[];
   report?: { outcome: string; provider: string; model: string; policy?: string;

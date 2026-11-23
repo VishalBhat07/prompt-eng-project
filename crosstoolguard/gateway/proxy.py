@@ -925,6 +925,17 @@ def api_clear_sessions() -> dict:
 def api_session(session_id: str) -> dict:
     """Return one live session's redacted events and actual attack graph."""
     from crosstoolguard.gateway.run_store import load_run
+    from crosstoolguard.evaluation.benchmark import single_tool_flags
+
+    def add_output_comparison(snapshot: dict) -> dict:
+        try:
+            events = [Event.model_validate(event) for event in snapshot.get("events", [])]
+            outputs = [event for event in events if event.event_type == EventType.TOOL_OUTPUT and event.output_preview]
+            flagged = single_tool_flags(outputs)
+        except Exception:
+            return {**snapshot, "single_tool": {"status": "unavailable"}}
+        return {**snapshot, "single_tool": {"status": "ready", "evaluated": len(outputs),
+                                          "flagged_event_ids": flagged}}
 
     if session_id not in SESSION_EVENTS and session_id not in RUN_STATUS:
         try:
@@ -933,15 +944,15 @@ def api_session(session_id: str) -> dict:
             snapshot = None
         if snapshot is None:
             raise HTTPException(status_code=404, detail="Session not found")
-        return snapshot
+        return add_output_comparison(snapshot)
     graph = api_graph(session_id)
     saved = load_run(session_id)
-    return {"session": session_id, **graph,
+    return add_output_comparison({"session": session_id, **graph,
             "events": [event.model_dump(mode="json") for event in SESSION_EVENTS.get(session_id, [])],
             "alerts": api_alerts(session_id)["alerts"],
             "blocks": SESSION_BLOCKS.get(session_id, saved.get("blocks", []) if saved else []),
             "report": RUN_STATUS.get(session_id, {}).get("report") or
-                      (saved.get("report") if saved else None)}
+                      (saved.get("report") if saved else None)})
 
 
 @app.get("/api/runs")

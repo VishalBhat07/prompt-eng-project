@@ -80,7 +80,7 @@ Open `http://127.0.0.1:5173`. Restart the gateway after changing `.env` or backe
 
 5. **Findings and approvals:** In Findings, expand **Why was this blocked?** to see the proposed tool, the gateway check, and any policy and graph evidence recorded at decision time. Follow **Inspect evidence in graph** to focus on the relevant nodes. Earlier run files may lack call-level explanations. Pending approvals appear on `/approvals` and on the task page. A grant applies once to the matching call, and a denial stops it.
 
-6. **Benchmark:** `/benchmark` shows the 19-case synthetic trace benchmark, its baselines and ablations, and a separate list of saved model runs. Refresh the synthetic artifact with `.\.venv-phase2\Scripts\python.exe scripts/export_dashboard_benchmark.py`. These numbers are not yet a repeated Groq attack benchmark.
+6. **Compare detectors:** In Graph, **Single-tool detector** checks each saved output preview independently. **CrossToolGuard session graph** shows the links and decisions for the same run. Both views can label an actual gateway block, but only the gateway made that decision. The Benchmark page remains empty while the replacement dataset is designed.
 
 ## Manual verification checkpoint (2026-11-22)
 

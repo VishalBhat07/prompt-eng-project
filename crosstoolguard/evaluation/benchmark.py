@@ -62,14 +62,16 @@ def run_all() -> list[dict]:
     return [run_case(c["id"]) for c in load_benchmark()]
 
 
-def single_tool_detect(events) -> bool:
-    """Baseline B: per-event judgment only - SUSPICIOUS text, or a lone
-    SECRET-arg call to an external-transfer tool. No cross-event reasoning."""
+def single_tool_flags(events) -> list[str]:
+    """Classify available output previews independently and return flagged event IDs."""
     from crosstoolguard.analyzer.semantic import classify
     from crosstoolguard.gateway.schemas import EventType
 
-    for e in events:
-        if e.event_type == EventType.TOOL_OUTPUT and e.output_preview:
-            if classify(e.output_preview) == "SUSPICIOUS":
-                return True
-    return False
+    return [event.event_id for event in events
+            if event.event_type == EventType.TOOL_OUTPUT and event.output_preview
+            and classify(event.output_preview) == "SUSPICIOUS"]
+
+
+def single_tool_detect(events) -> bool:
+    """Baseline B: flag the session if any standalone tool output is suspicious."""
+    return bool(single_tool_flags(events))

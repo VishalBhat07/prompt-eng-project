@@ -79,6 +79,8 @@ def test_poisoned_output_is_observed_signal_without_downstream_attack(monkeypatc
         graph = _client().get("/api/graph", params={"session": session}).json()
         assert graph["paths"] == []
         assert len(graph["signals"]) == 1
+        comparison = _client().get(f"/api/sessions/{session}").json()["single_tool"]
+        assert comparison == {"status": "ready", "evaluated": 1, "flagged_event_ids": ["poison-1"]}
         row = next(row for row in _client().get('/api/sessions').json()['sessions'] if row['id'] == session)
         assert row['signals'] == 1 and row['findings'] == 0
         assert row['status'] == 'HIGH'
@@ -106,6 +108,7 @@ def test_recorded_run_remains_available_after_session_memory_is_cleared(monkeypa
     restored = client.get(f"/api/sessions/{session}").json()
     assert restored["session"] == session
     assert restored["paths"] and restored["events"]
+    assert restored["single_tool"] == snapshot["single_tool"]
     assert any(row["id"] == session and row["blocked"] == 1
                for row in client.get("/api/sessions").json()["sessions"])
 
