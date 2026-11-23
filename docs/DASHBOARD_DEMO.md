@@ -80,7 +80,7 @@ Open `http://127.0.0.1:5173`. Restart the gateway after changing `.env` or backe
 
 5. **Findings and approvals:** In Findings, expand **Why was this blocked?** to see the proposed tool, the gateway check, and any policy and graph evidence recorded at decision time. Follow **Inspect evidence in graph** to focus on the relevant nodes. Earlier run files may lack call-level explanations. Pending approvals appear on `/approvals` and on the task page. A grant applies once to the matching call, and a denial stops it.
 
-6. **Compare detectors:** In Graph, **Single-tool detector** checks each saved output preview independently. **CrossToolGuard session graph** shows the links and decisions for the same run. Both views can label an actual gateway block, but only the gateway made that decision. The Benchmark page remains empty while the replacement dataset is designed.
+6. **Compare detectors:** In Graph, **Single-tool detector** checks each saved output preview independently. **CrossToolGuard session graph** shows the links and decisions for the same run. Both views show any gateway block recorded for that run. **Benchmark** shows the separate [100-case offline replay](SESSION_BENCHMARK_V3.md).
 
 ## Manual verification checkpoint (2026-11-22)
 
@@ -138,13 +138,13 @@ All 16 approved public servers completed one harmless read through the guarded g
 
 `drawio`, `coingecko`, `tavily-docs`, and `mintlify-docs` advertise at least one write/feedback action. The demo treats them as review targets, not as read-only services. `boim` and `youth4work` remain inventoried for audit but are excluded from the agent catalog until a harmless call succeeds.
 
-Refresh this inventory with:
+Re-inventory selected catalog entries before reviewing changes:
 
 ```powershell
-.\.venv-phase2\Scripts\python.exe scripts/onboard_public_catalog.py --approve
+.\.venv-phase2\Scripts\python.exe scripts/onboard_public_catalog.py --only microsoft-learn
 ```
 
-Use `--only <server-id> ...` to re-check selected servers. The script sends only `initialize` and `tools/list`; `--approve` pins the exact snapshot after the metadata assessment and does not call a tool.
+The script reads metadata and tool definitions. Click **Refresh inventories** in the dashboard to reload the saved list. Review any modified snapshot and approve its exact fingerprint in **Inventory**.
 
 ### Prompts to run manually
 
@@ -205,4 +205,4 @@ rendering after a gateway restart.
 
 ## Verification checkpoint status
 
-The dashboard checkpoint is ready for manual verification. Benchmarking and later research phases remain intentionally paused until the operator records the results of the prompts above and confirms the dashboard behavior.
+Use the prompts above to check tool selection and gateway behavior on your own configuration. See the [benchmark methodology](SESSION_BENCHMARK_V3.md) for the completed offline replay.

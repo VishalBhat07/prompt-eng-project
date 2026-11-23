@@ -10,8 +10,6 @@ blocks the chain (`ALLOW, ALLOW, BLOCK`) instead of judging tools in isolation.
 > Full idea: `CrossToolGuard_Full_Detailed_Project_Document.md` · Plan: `docs/superpowers/plans/`
 > Threat model: `docs/THREAT_MODEL.md` · Dashboard API: `docs/API_CONTRACT.md`
 
-For the current Windows dashboard walkthrough with real multi-server Groq runs, saved session graphs, and the controlled blocked-path demo, follow [DASHBOARD_DEMO.md](docs/DASHBOARD_DEMO.md). The Benchmark page distinguishes the synthetic trace benchmark from recorded model runs; repeated model-run research evaluation remains in progress.
-
 ## Architecture
 
 ```
@@ -25,86 +23,115 @@ USER → LLM AGENT → CrossToolGuard PROXY (monitor/enforcing, fail-closed) →
 |---|---|---|---|---|
 | Verdict | ALLOW | MONITOR | APPROVAL | BLOCK |
 
-## Prerequisites
+## Run the dashboard demo on Windows
 
-- Python 3.11+ (tested 3.11 / 3.13), Node 18+, Docker (optional, for compose)
-- A **Groq API key** (free at console.groq.com) - agent reasoning + L4 prompt-guard judge.
-  No OpenAI subscription needed. Local fallback: `ollama pull llama3.2:3b` (~2 GB, M2-Air safe).
+Use Python 3.11+, Node.js 22, and a Groq API key for the live agent. The scripted
+demo and offline benchmark run without a Groq key.
 
-## Setup
+From the repository root, run this one-time setup in PowerShell:
 
-```bash
-pip install -r requirements.txt
-cp .env.example .env        # then put GROQ_API_KEY=... inside (.env is git-ignored, never commit it)
-set -a; source .env; set +a # load env (zsh)
-cd dashboard && npm install --no-audit && cd ..
+```powershell
+py -3 -m venv .venv-phase2
+.\.venv-phase2\Scripts\python.exe -m pip install -r requirements.txt
+npm --prefix dashboard ci
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
 ```
 
-## Run (3 terminals)
+Edit the existing keys in the root `.env` to use the local fixtures. Keep your
+Groq key in that file.
 
-```bash
-# 1 - proxy (use MODE=monitor to log-only, MODE=enforcing to block)
-MODE=enforcing python -m uvicorn crosstoolguard.gateway.proxy:app --port 8000
-
-# 2 - lab agent (Groq plans, every call routed via the proxy)
-python lab/agent.py --task "summarize lab/data/invoice.txt"
-
-# 3 - dashboard
-cd dashboard && npm run dev   # → http://127.0.0.1:5173 (proxies /api + /ws to :8000)
+```dotenv
+GROQ_API_KEY=your_groq_key
+MCP_INVENTORY_API_ENABLED=true
+MCP_INVENTORY_ALLOWED_HOSTS=127.0.0.1
+MCP_INVENTORY_ALLOWED_PORTS=8761,8762,8763
+MCP_INVENTORY_ALLOW_PRIVATE_NETWORK=true
+REGISTRY_DB=data/registry.db
+CTG_RUNS_DIR=data/runs
+CTG_SEMANTIC_MODE=heuristic
 ```
 
-Docker alternative: `docker compose up --build` (proxy on :8000, isolated `ctg-lab` net).
+Start these three commands in separate PowerShell terminals, each from the
+repository root:
 
-## Inventory an MCP server
+| Terminal | Command |
+| --- | --- |
+| Local MCP fixtures | `.\.venv-phase2\Scripts\python.exe scripts/local_fixture_stack.py` |
+| Gateway | `$env:MODE='enforcing'; .\.venv-phase2\Scripts\python.exe -m uvicorn crosstoolguard.gateway.proxy:app --host 127.0.0.1 --port 8000` |
+| Dashboard | `npm --prefix dashboard run dev` |
 
-CrossToolGuard can make a read-only inventory of an MCP server over Streamable HTTP or stdio.
-Create a JSON connection profile and follow [MCP_INVENTORY.md](docs/MCP_INVENTORY.md).
-The command saves complete tool definitions and fingerprints to `registry.db`; the dashboard
-shows saved snapshots at `/inventory`. Inventory does not call tools or prove server behavior safe.
-Only launch stdio servers inside an isolated environment, and do not supply production credentials.
+Open the [dashboard](http://127.0.0.1:5173). Restart the gateway after changing
+`.env`.
 
-The current local demo registry contains **24 snapshots**, **20 approved servers**, and **80 approved tools** from public documentation, code-search, repository, diagram, agent-skill, environmental, municipal, coworking, and crypto-data MCP services. The Run a task page scopes each run to selected servers so a free-tier model is not sent the entire catalog at once. Four snapshots remain unapproved for documented smoke-test failures or CRITICAL metadata risk. Refresh with `scripts/onboard_public_catalog.py --approve`; see [DASHBOARD_DEMO.md](docs/DASHBOARD_DEMO.md) for the catalog table and manual agent prompts.
+### Add and keep the inventory current
 
-For model-backed prompt checks, `python -m crosstoolguard.evaluation.prompt_runner --provider groq`
-runs the bundled benign/poisoned cases against the shipped synthetic MCP fixture. You can pass
-`--task` and `--system-prompt-file` to evaluate your own prompts against that fixture. The runner
-does not execute arbitrary server code; use synthetic prompts only, since prompts are sent to the
-configured model provider. For arbitrary inventoried servers, `python -m
-crosstoolguard.evaluation.prompt_preflight --inventory inventory.json --task "..." --forbid-tool
-tool_name` screens the model's proposed tool action without connecting to or invoking the server.
-After reviewing and pinning a snapshot, an agent can call approved Streamable HTTP tools through
-`POST /api/mcp/tools/call`; enable `MODE=enforcing` for pre-call policy decisions. See
-[MCP_INVENTORY.md](docs/MCP_INVENTORY.md) for constraints and examples.
+1. Open **Inventory**. Enter a stable **Inventory ID** and **MCP server URL**,
+   then click **Inventory server**. Add these three fixtures for the local demo:
 
-## 60-second demo (the thesis, live)
+   | Inventory ID | MCP server URL |
+   | --- | --- |
+   | `fixture-invoice` | `http://127.0.0.1:8761/mcp` |
+   | `fixture-file` | `http://127.0.0.1:8762/mcp` |
+   | `fixture-send` | `http://127.0.0.1:8763/mcp` |
 
-```bash
-S=S-DEMO
-curl -s -X POST localhost:8000/tools/call -H 'Content-Type: application/json' \
-  -d "{\"session_id\":\"$S\",\"server\":\"filesystem-mcp\",\"tool\":\"read_file\",\"arguments\":{\"path\":\"credentials_example.txt\"}}" | head -c 60; echo
-curl -s -X POST localhost:8000/tools/call -H 'Content-Type: application/json' \
-  -d "{\"session_id\":\"$S\",\"server\":\"storage-mcp\",\"tool\":\"store_file\",\"arguments\":{\"name\":\"s\",\"content\":\"x\"}}" | head -c 60; echo
-curl -s -X POST localhost:8000/tools/call -H 'Content-Type: application/json' \
-  -d "{\"session_id\":\"$S\",\"server\":\"storage-mcp\",\"tool\":\"upload_file\",\"arguments\":{\"name\":\"s\"}}" | head -c 60; echo
-# → ALLOW … ALLOW … BLOCK, then open the dashboard (session S-DEMO) for the red path + explanation.
-curl -s "http://localhost:8000/api/alerts?session=$S" | python -m json.tool | head -20
+2. Expand each server row. Review its tool names, descriptions, schemas, and
+   metadata findings. Click **Approve and pin this exact fingerprint** for the
+   snapshot you want the agent to use.
+3. To check a server for changes, submit **Inventory server** again with the
+   **same ID and URL**. An unchanged snapshot keeps its approval. A changed
+   snapshot is marked `MODIFIED` and needs a new review and approval.
+   **Refresh inventories** reloads the saved list from the gateway. Re-submitting
+   the server performs the upstream check. Use **Revoke approval** to remove a
+   server's tools from new runs.
+4. Inventory and approvals are stored in `data/registry.db` by default and
+   survive a restart. A fresh checkout starts with an empty local inventory.
+   Inspection reads tool definitions. Approval pins that metadata snapshot.
+
+For a **public MCP server**, add its exact hostname to
+`MCP_INVENTORY_ALLOWED_HOSTS` and port `443` to
+`MCP_INVENTORY_ALLOWED_PORTS`, then restart the gateway. Use the publisher's
+Streamable HTTP MCP endpoint over HTTPS, without credentials, query parameters,
+or fragments in the URL. For a public-only setup, set
+`MCP_INVENTORY_ALLOW_PRIVATE_NETWORK=false`. See the
+[public catalog and walkthrough](docs/DASHBOARD_DEMO.md#public-catalog-added)
+and the [inventory CLI guide](docs/MCP_INVENTORY.md).
+
+### Run a task and verify the decision
+
+1. Open **Demo** and enter `Find invoice INV-1042 and summarize its total and
+   status.` Click **Run task**. The Groq agent selects tools from approved
+   servers. To isolate a fixture run when public tools are also approved,
+   expand **Run settings** and enable **Limit discovery to selected servers**.
+2. Click **Open this session's graph** or select the run in **Sessions**.
+   Switch between the **Single-tool graph** and **CrossToolGuard graph**.
+   **Findings** shows observed signals, policy explanations, and possible
+   paths. An `ALLOW` on an invoice lookup is consistent with an ordinary task.
+3. To see the approval flow, ask the agent to send `hello dashboard` to the local
+   fixture's mock destination. If a request appears, open **Approvals** and
+   choose **Deny** or **Grant once** for that call.
+
+For a repeatable block demonstration, run this command from the repository root:
+
+```powershell
+.\.venv-phase2\Scripts\python.exe scripts/poisoned_workflow_demo.py
 ```
 
-## Test & measure
+The scripted agent uses three synthetic servers. Expect a final `BLOCK` and zero
+mock destination calls. Open **Sessions** and select the printed session ID
+to inspect the result. That run shows the simulated provider. Groq runs record
+the model's actual choices, which can vary.
 
-```bash
-python -m pytest tests/ -q          # 103 passed, 1 skipped: schemas, proxy, registry,
-                                    # provenance, analyzer, graph, detection, policy, API, benchmark
-python -c "from crosstoolguard.evaluation.benchmark import run_all
-print(len(run_all()), 'cases')"     # 19-case benchmark (A–J attacks + N benign)
-python -c "from crosstoolguard.evaluation.experiments import run_baselines, run_ablation
-print(run_baselines()); print(run_ablation())"
+## Test and benchmark
+
+```powershell
+.\.venv-phase2\Scripts\python.exe -m pytest -q
+npm --prefix dashboard run build
+.\.venv-phase2\Scripts\python.exe scripts/export_session_benchmark.py
 ```
 
-Measured on v1 (see report for method): detection **8/8** targeted attacks, FPR **0.000**,
-cross-tool gain **7** cases invisible to the single-tool baseline, `analyze()` mean **14 ms**
-/ p95 **66 ms**. Known designed gap: `B-indirect-basic` (reconnaissance with no sink or
-privilege reached) is recorded as an expected miss.
+The **Benchmark** tab compares four methods on 100 offline replay records.
+Live demo runs are available under **Sessions**. See the
+[benchmark methodology and results](docs/SESSION_BENCHMARK_V3.md).
 
 ## Layout
 
@@ -122,8 +149,8 @@ crosstoolguard/
   attacks/      10-category trace builders (A–J) + 8 benign workflows
   evaluation/   BENCHMARK.yaml · benchmark.py · metrics.py · experiments.py (baselines/ablation/latency)
 lab/            Groq-first ReAct agent + 4 benign servers + synthetic data only
-dashboard/      Vite + React + React Flow (MVP UI; full polished website planned post-evaluation)
-tests/          mirrors src, 103 passing tests plus 1 optional embedding-layer skip
+dashboard/      Vite + React + React Flow (inventory, demo, graphs, approvals, benchmark)
+tests/          backend, evaluation, and gateway tests
 ```
 
 ## Safety & conventions
