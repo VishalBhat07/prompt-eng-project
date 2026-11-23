@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import ReactFlow, { Background, Controls, MiniMap, type Edge, type Node } from 'reactflow';
+import ReactFlow, { Background, Controls, type Edge, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { RiskMeter, SeverityBadge } from '../components/Severity';
 import SingleToolGraph from '../components/SingleToolGraph';
-import { agentOverlay } from '../data/agentGraph';
+import { agentOverlay, toolEventSteps } from '../data/agentGraph';
 import { loadSession, type SessionData } from '../data/provider';
 
 const LANE: Record<string, number> = { SERVER: 0, TOOL: 1, DATA: 2, INSTRUCTION: 2, DESTINATION: 3 };
@@ -17,6 +17,7 @@ function label(n: { type: string; [k: string]: unknown }) {
 export default function GraphExplorer() {
   const [params, setParams] = useSearchParams();
   const session = params.get('session') ?? '';
+  const singleToolView = params.get('view') === 'single-tool';
   const focusKey = params.getAll('focus').join('\n');
   const [data, setData] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
@@ -80,6 +81,15 @@ export default function GraphExplorer() {
     return true;
   }), [data, types, suspOnly, hot, tick, cutoff]);
   const visIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible]);
+  const steps = useMemo(() => {
+    const byEvent = toolEventSteps(data?.events);
+    return new Map<string, number>((data?.events ?? []).flatMap((event) => {
+      if (typeof event.event_id !== 'string' || typeof event.tool !== 'string') return [];
+      const step = byEvent.get(event.event_id);
+      return step ? [[`tool:${event.tool}:${event.event_id}`, step] as const] : [];
+    }));
+  }, [data?.events]);
+  const blockedNodes = useMemo(() => new Set(data?.blocks?.map((block) => block.call_node_id)), [data?.blocks]);
 
   const flowNodes: Node[] = useMemo(() => {
     const laneIdx = new Map<string, number>();
@@ -92,50 +102,75 @@ export default function GraphExplorer() {
         : { x: order * 220, y: lane * 180 };
       const dim = (focus && !focus.includes(n.id)) || (hovered && hovered !== n.id && !adj.get(hovered)?.has(n.id));
       const isHot = hot.has(n.id);
-      const isBlocked = data?.blocks?.some((block) => block.call_node_id === n.id);
+      const isBlocked = blockedNodes.has(n.id);
+      const step = steps.get(n.id);
+      const title = step ? `Step ${step} · ${label(n)}` : label(n);
       return {
         id: n.id, position: pos,
-        data: { label: isBlocked ? <>{label(n)}<br />Proposed call · BLOCK</> : label(n) },
+        data: { label: isBlocked ? <>{title}<br />Proposed call · BLOCK</> : title },
         style: {
           background: isHot || n.type === 'INSTRUCTION' ? 'rgba(255,99,111,0.08)' : 'var(--bg-1)',
           color: 'var(--ink)',
-          border: n.hypothetical ? '1.5px dashed var(--high)' : isHot || n.type === 'INSTRUCTION' ? '1.5px solid var(--crit)' : '1px solid var(--line)',
+          border: n.hypothetical ? '1.5px dashed var(--high)' : isBlocked || isHot || n.type === 'INSTRUCTION' ? '1.5px solid var(--crit)' : '1px solid var(--line)',
           borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
           fontFamily: 'var(--font-mono)', opacity: dim ? 0.22 : 1,
         },
       };
     });
-  }, [visible, radial, hot, focus, hovered, adj, data?.blocks]);
+  }, [visible, radial, hot, focus, hovered, adj, blockedNodes, steps]);
 
   const flowEdges: Edge[] = useMemo(() => (data?.edges ?? [])
     .filter((e) => visIds.has(e.source) && visIds.has(e.target))
     .map((e, i) => ({
-      id: `e${i}`, source: e.source, target: e.target, label: e.type,
+      id: `e${i}`, source: e.source, target: e.target,
+      label: e.type === 'INVOKES' && blockedNodes.has(e.target) ? 'Target server' :
+        e.type === 'SENDS' && blockedNodes.has(e.source) ? 'Proposed transfer' : e.type,
       labelStyle: { fill: 'var(--faint)', fontSize: 10, fontFamily: 'var(--font-mono)' },
       labelBgStyle: { fill: 'var(--bg-0)' },
-      animated: e.type === 'SENDS' || e.type === 'FLOWS_TO',
+      animated: (e.type === 'SENDS' && !blockedNodes.has(e.source)) || e.type === 'FLOWS_TO',
       style: { stroke: e.type === 'SENDS' ? 'var(--crit)' : e.type.startsWith('POSSIBLE_') ? 'var(--high)' : e.type === 'FLOWS_TO' ? 'var(--accent)' : 'var(--edge-faint)', strokeWidth: e.type === 'SENDS' ? 2 : 1.2, strokeDasharray: e.type.startsWith('POSSIBLE_') ? '6 5' : undefined },
-    })), [data, visIds]);
+    })), [data, visIds, blockedNodes]);
 
   const sel = data?.nodes.find((n) => n.id === selected) ?? null;
   const agent = useMemo(() => data
-    ? agentOverlay(data, flowNodes, (tool, eventId) => `tool:${tool}:${eventId}`) : null, [data, flowNodes]);
+    ? agentOverlay(data, flowNodes, (tool, eventId) => `tool:${tool}:${eventId}`, true) : null, [data, flowNodes]);
   const selFindings = data?.paths.filter((p) => selected && p.node_ids.includes(selected)) ?? [];
+  const showGraph = (singleTool: boolean) => {
+    const next = new URLSearchParams(params);
+    if (singleTool) next.set('view', 'single-tool');
+    else next.delete('view');
+    setPlaying(false);
+    setParams(next);
+  };
 
   return (
     <div>
       <header style={{ padding: '56px 0 28px', maxWidth: 720 }}>
         <span className="eyebrow">Inspect</span>
         <h1 style={{ fontSize: 'clamp(32px,4vw,44px)', margin: '14px 0 10px' }}>Graph explorer</h1>
-        <p className="sub" style={{ fontSize: 16 }}>Two views of the same session. The single-tool detector reviews saved output previews. CrossToolGuard shows session evidence and gateway decisions.</p>
-        <p className="mono" style={{ color: 'var(--faint)', fontSize: 12, marginTop: 10 }}>
-          solid = observed · red = suspicious output signal or detected path · dashed orange = possible harm (not evidence the agent used it)
-        </p>
+        <p className="sub" style={{ fontSize: 16 }}>Both graphs use the same step numbers. Each recorded proposal and tool output gets its own step.</p>
       </header>
       {!session && <p>Choose a run from <Link to="/sessions">Sessions</Link> to inspect its graph.</p>}
       {session && !data && !error && <p role="status">Loading session graph…</p>}
       {data && data.nodes.length === 0 && <p role="status">No graph events have been recorded for this session yet.</p>}
       {error && <p role="alert">{error}</p>}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', margin: '0 0 16px' }}>
+        <label>Session <input className="mono" value={session}
+          onChange={(event) => {
+            const next = new URLSearchParams(params);
+            next.set('session', event.target.value);
+            next.delete('focus');
+            setParams(next);
+          }} style={{ width: 130, marginLeft: 6 }} /></label>
+        {session && <div role="group" aria-label="Graph view" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" aria-pressed={!singleToolView} onClick={() => showGraph(false)}
+            style={{ borderColor: !singleToolView ? 'var(--accent)' : undefined }}>CrossToolGuard graph</button>
+          <button type="button" aria-pressed={singleToolView} onClick={() => showGraph(true)}
+            style={{ borderColor: singleToolView ? 'var(--accent)' : undefined }}>Single-tool graph</button>
+        </div>}
+      </div>
+      {singleToolView && data && <SingleToolGraph data={data} />}
+      {!singleToolView && data && <>
       {(data?.potential_paths?.length ?? 0) > 0 && <section style={{ padding: '16px 0', borderTop: '1px solid var(--line)' }}>
         <strong>Possible harm paths (dashed graph edges)</strong>
         <p>These paths are inferred from approved tool capabilities. They do not mean the agent used those tools or that CrossToolGuard blocked them.</p>
@@ -157,8 +192,6 @@ export default function GraphExplorer() {
         display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
         padding: '12px 0', borderTop: '1px solid var(--line)', fontSize: 13.5, color: 'var(--muted)',
       }}>
-        <label>Session <input className="mono" value={session}
-          onChange={(e) => setParams({ session: e.target.value })} style={{ width: 130, marginLeft: 6 }} /></label>
         <button onClick={() => setRadial((r) => !r)}>{radial ? 'Swimlanes' : 'Radial'}</button>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <input type="checkbox" checked={suspOnly} onChange={(e) => setSuspOnly(e.target.checked)} /> Suspicious only
@@ -173,21 +206,18 @@ export default function GraphExplorer() {
         </span>
       </div>
 
-      {data && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 16 }}>
-      <SingleToolGraph data={data} />
       <section aria-label="CrossToolGuard session graph" style={{ minWidth: 0 }}>
       <h2>CrossToolGuard session graph</h2>
-      <p>Session links show the evidence used by policy. Dashed orange edges show possible paths.</p>
+      <p>The gateway checks each proposed call. Session links show the policy evidence, and dashed orange links show possible paths.</p>
       <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-0)' }}>
         <div style={{ height: 560 }}>
-          <ReactFlow nodes={agent ? [...flowNodes, agent.node] : flowNodes}
+          <ReactFlow nodes={agent ? [...flowNodes, ...agent.nodes] : flowNodes}
             edges={agent ? [...flowEdges, ...agent.edges] : flowEdges} fitView
             onNodeClick={(_, n) => { setSelected(n.id); setFocus(null); }}
             onNodeMouseEnter={(_, n) => setHovered(n.id)}
             onNodeMouseLeave={() => setHovered(null)}>
             <Background color="var(--edge-faint)" gap={28} />
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable style={{ background: 'var(--bg-1)' }} />
           </ReactFlow>
         </div>
         <div style={{
@@ -208,7 +238,6 @@ export default function GraphExplorer() {
         </div>
       </div>
       </section>
-      </div>}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
         {(data?.paths ?? []).map((p) => (
@@ -223,7 +252,7 @@ export default function GraphExplorer() {
         <aside aria-label="node details" style={{
           marginTop: 16, border: '1px solid var(--line)', borderRadius: 12, padding: 20, maxWidth: 640,
         }}>
-          <div className="mono" style={{ fontSize: 15, fontWeight: 600 }}>{label(sel)}</div>
+          <div className="mono" style={{ fontSize: 15, fontWeight: 600 }}>{steps.has(sel.id) && `Step ${steps.get(sel.id)} · `}{label(sel)}</div>
           <div className="mono" style={{ fontSize: 12.5, color: 'var(--faint)', marginTop: 6 }}>
             {String(sel.session_id ?? session)} · {String(sel.timestamp ?? '').slice(11, 19)}
             {sel.trust ? ` · trust ${String(sel.trust)}` : ''}
@@ -249,6 +278,7 @@ export default function GraphExplorer() {
             className="mono">{label(n)}</button>
         ))}
       </details>
+      </>}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import ReactFlow, { Background, Controls, type Edge, type Node } from 'reactflow';
 import type { SessionData } from '../data/types';
-import { agentOverlay } from '../data/agentGraph';
+import { agentOverlay, toolEventSteps } from '../data/agentGraph';
 
 export default function SingleToolGraph({ data }: { data: SessionData }) {
   const baseline = data.single_tool;
@@ -9,6 +9,7 @@ export default function SingleToolGraph({ data }: { data: SessionData }) {
   const edges: Edge[] = [];
   const servers = new Set<string>();
   const blocked = new Set(data.blocks?.map((block) => block.call_node_id));
+  const steps = toolEventSteps(data.events);
 
   data.events.forEach((event, index) => {
     const { event_id: eventId, server, tool, event_type: kind } = event;
@@ -25,7 +26,7 @@ export default function SingleToolGraph({ data }: { data: SessionData }) {
       blocked.has(`tool:${tool}:${eventId}`) ? 'Proposed call · blocked by gateway' : 'Proposed call';
     nodes.push({
       id: eventId, position: { x, y: 110 },
-      data: { label: <><strong>{tool}</strong><br />{description}{flag && <><br />Suspicious output</>}</> },
+      data: { label: <><strong>Step {steps.get(eventId)} · {tool}</strong><br />{description}{flag && <><br />Suspicious output</>}</> },
       style: { width: 180, overflowWrap: 'anywhere', color: 'var(--ink)', background: 'var(--bg-1)',
         borderColor: flag ? 'var(--crit)' : 'var(--line)' },
     });
@@ -33,7 +34,7 @@ export default function SingleToolGraph({ data }: { data: SessionData }) {
   });
   const agent = agentOverlay(data, nodes, (_tool, eventId) => eventId);
   if (agent) {
-    nodes.push(agent.node);
+    nodes.push(...agent.nodes);
     edges.push(...agent.edges);
   }
 
