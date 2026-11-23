@@ -75,6 +75,8 @@ def test_agent_waits_for_operator_approval_then_resumes(monkeypatch, tmp_path):
         request = next(item for item in pending if item["session"] == session_id)
         assert request["argument_fields"] == ["content"]
         assert request["arguments_sha256"]
+        assert "EXTERNAL_TRANSFER" in request["reason"]
+        assert request["destination_label"] is None
         approval_id = request["id"]
         assert client.post("/api/approvals/grant",
                            json={"approval_id": approval_id}).status_code == 200

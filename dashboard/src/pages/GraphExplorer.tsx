@@ -15,6 +15,7 @@ function label(n: { type: string; [k: string]: unknown }) {
 export default function GraphExplorer() {
   const [params, setParams] = useSearchParams();
   const session = params.get('session') ?? '';
+  const focusKey = params.getAll('focus').join('\n');
   const [data, setData] = useState<SessionData | null>(null);
   const [error, setError] = useState('');
   const [radial, setRadial] = useState(false);
@@ -29,7 +30,8 @@ export default function GraphExplorer() {
 
   useEffect(() => {
     setData(null); setError('');
-    setSelected(null); setHovered(null); setFocus(null); setPlaying(false);
+    const requested = focusKey ? focusKey.split('\n') : [];
+    setSelected(requested[0] ?? null); setHovered(null); setFocus(requested.length ? requested : null); setPlaying(false);
     if (!session) return;
     let active = true;
     const refresh = () => loadSession(session).then((next) => {
@@ -38,7 +40,7 @@ export default function GraphExplorer() {
     void refresh();
     const timer = window.setInterval(() => { void refresh(); }, 4000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [session]);
+  }, [session, focusKey]);
   const hot = useMemo(() => new Set([
     ...(data?.paths ?? []).flatMap((p) => p.node_ids),
     ...(data?.signals ?? []).map((signal) => signal.node_id),

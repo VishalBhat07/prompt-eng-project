@@ -26,11 +26,11 @@ def explain_finding(graph: nx.DiGraph, finding: Finding, *, verdict: str, policy
     origin = seq[0] if seq else "unknown"
     if len(seq) > 2:
         middle = ", then ".join(f"`{t}`" for t in seq[1:-1])
-        chain = f"was subsequently passed to {middle}, then consumed by `{seq[-1]}`"
+        chain = f"continues through {middle}, then reaches `{seq[-1]}`"
     elif len(seq) == 2:
-        chain = f"was subsequently consumed by `{seq[1]}`"
+        chain = f"links to `{seq[1]}`"
     else:
-        chain = "had no downstream consumer yet"
+        chain = "has no downstream tool in this finding"
     caps = {c for n in finding.path for c in
             set(graph.nodes[n].get("capabilities", []))
             | set(graph.nodes[n].get("origin_capabilities", []))}
@@ -39,8 +39,7 @@ def explain_finding(graph: nx.DiGraph, finding: Finding, *, verdict: str, policy
                 if "PRIVILEGED" in caps else "which is not privileged")
     data_word = _sensitivity_word(graph, finding)
     chain_str = " → ".join(seq) if seq else "-"
-    decision = "BLOCKED" if verdict == "BLOCK" else verdict
-    return (f"The agent accessed {data_word} data via `{origin}`. The resulting data {chain}, "
-            f"{cap_note}. The combined path ({chain_str}) matches `{finding.pattern}` "
-            f"({finding.severity}, risk {finding.risk:.2f}), violating the `{policy}` policy, "
-            f"so the final action was {decision}.")
+    return (f"{data_word} evidence starts at `{origin}`. The graph {chain}, "
+            f"{cap_note}. The path ({chain_str}) matches `{finding.pattern}` "
+            f"({finding.severity}, risk {finding.risk:.2f}). "
+            f"The `{policy}` policy gives this path a {verdict} assessment.")

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-interface Pending { id: string; session: string; server: string; tool: string; expires_at: number; argument_fields?: string[]; arguments_sha256?: string; data_class?: string }
+interface Pending { id: string; session: string; server: string; tool: string; expires_at: number; argument_fields?: string[]; arguments_sha256?: string; data_class?: string; reason?: string; destination_label?: string | null }
 
 export default function Approvals() {
   const [items, setItems] = useState<Pending[]>([]);
@@ -40,6 +40,8 @@ export default function Approvals() {
       {items.map((item) => <article key={item.id} style={{ padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
         <strong className="mono">{item.server}/{item.tool}</strong> · <Link to={`/graph?session=${encodeURIComponent(item.session)}`}>{item.session}</Link>
         <p>Argument fields: {item.argument_fields?.join(', ') || 'none'} · Data class: {item.data_class ?? 'unknown'}</p>
+        {item.reason && <p>{item.reason}</p>}
+        <p>Destination: {item.destination_label ?? 'No reviewed destination recorded'}</p>
         {item.arguments_sha256 && <p className="mono">Argument hash: {item.arguments_sha256.slice(0, 16)}</p>}
         <p>Expires {new Date(item.expires_at * 1000).toLocaleTimeString()}</p>
         <button onClick={() => decide(item.id, true)}>Grant once</button>

@@ -115,9 +115,19 @@ Clears saved run snapshots and live session state when no run is active. Approve
 
 ## `GET /api/approvals` and `POST /api/approvals/{approval_id}/deny`
 
-The list contains live pending request IDs, session, server, tool, and expiry. Deny removes a pending request; grants still use `/approvals/grant`.
+The list contains pending request IDs, session, server, tool, expiry, and a
+short `reason` describing why the call needs review. The optional
+`destination_label` is null when the gateway cannot provide a reviewed label.
+Argument values are excluded. Deny removes a pending request. Grant requests
+use `/api/approvals/grant`.
 
 ## `GET /api/alerts?session=ID`
+
+The session detail endpoint also returns `blocks` for recorded call decisions.
+Each entry contains the proposed server and tool, the check and reason, and
+the call node ID when available. Policy blocks include the matched rule,
+pattern, tool chain, data classes, capabilities, and evidence node IDs.
+New agent snapshots retain these explanations across gateway restarts.
 
 `{alerts: [{pattern, severity, risk, tools, policy, verdict, explanation}]}`.
 `explanation` is one NL paragraph (origin → chain → policy → decision).

@@ -54,7 +54,7 @@ def test_fail_closed_on_policy_error(monkeypatch):
     monkeypatch.setenv("MODE", "enforcing")
     import crosstoolguard.gateway.proxy as proxy_mod
 
-    monkeypatch.setattr(proxy_mod, "decide_for_session",
+    monkeypatch.setattr(proxy_mod, "_session_policy",
                         lambda events: (_ for _ in ()).throw(RuntimeError("boom")))
     r = _client().post(
         "/tools/call",
@@ -275,7 +275,7 @@ def test_approval_grant_flow(monkeypatch):
     import crosstoolguard.gateway.proxy as proxy_mod
     from crosstoolguard.gateway.schemas import Verdict
 
-    monkeypatch.setattr(proxy_mod, "decide_for_session", lambda events: Verdict.APPROVAL)
+    monkeypatch.setattr(proxy_mod, "_session_policy", lambda events: (Verdict.APPROVAL, []))
     c = _client()
     body = {"session_id": "S-APPR", "server": "storage-mcp", "tool": "upload_file", "arguments": {"name": "x"}}
     first = c.post("/tools/call", json=body).json()

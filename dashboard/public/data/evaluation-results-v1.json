@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "datasets": {
+    "replay": "synthetic_replay_v1",
+    "benign": "benign_local_v1"
+  },
+  "model": {
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b"
+  },
+  "replay": {
+    "no_detector": {
+      "alert_recall": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 9,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "false_alerts": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 6,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "latency_ms": {
+        "median": 0.00019999788491986692,
+        "p95": 0.0002999986463692039,
+        "n": 120
+      }
+    },
+    "keyword": {
+      "alert_recall": {
+        "numerator": 6,
+        "denominator": 12,
+        "groups": 9,
+        "value": 0.5,
+        "bootstrap_95": [
+          0.0,
+          0.8
+        ]
+      },
+      "false_alerts": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 6,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "latency_ms": {
+        "median": 0.0022500007617054507,
+        "p95": 0.004300000000512227,
+        "n": 120
+      }
+    },
+    "single_output": {
+      "alert_recall": {
+        "numerator": 6,
+        "denominator": 12,
+        "groups": 9,
+        "value": 0.5,
+        "bootstrap_95": [
+          0.0,
+          0.8
+        ]
+      },
+      "false_alerts": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 6,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "latency_ms": {
+        "median": 0.011850001101265661,
+        "p95": 0.02269999822601676,
+        "n": 120
+      }
+    },
+    "graph_without_instruction_enrichment": {
+      "alert_recall": {
+        "numerator": 6,
+        "denominator": 12,
+        "groups": 9,
+        "value": 0.5,
+        "bootstrap_95": [
+          0.2,
+          1.0
+        ]
+      },
+      "false_alerts": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 6,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "latency_ms": {
+        "median": 0.10029999975813553,
+        "p95": 0.25119999918388203,
+        "n": 120
+      }
+    },
+    "full_graph": {
+      "alert_recall": {
+        "numerator": 12,
+        "denominator": 12,
+        "groups": 9,
+        "value": 1.0,
+        "bootstrap_95": [
+          1.0,
+          1.0
+        ]
+      },
+      "false_alerts": {
+        "numerator": 0,
+        "denominator": 12,
+        "groups": 6,
+        "value": 0.0,
+        "bootstrap_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "latency_ms": {
+        "median": 0.1258000011148397,
+        "p95": 0.25889999960782006,
+        "n": 120
+      },
+      "verdict_agreement": {
+        "numerator": 24,
+        "denominator": 24,
+        "groups": 15,
+        "value": 1.0,
+        "bootstrap_95": [
+          1.0,
+          1.0
+        ]
+      }
+    }
+  },
+  "benign": {
+    "automatic": {
+      "completion": {
+        "numerator": 10,
+        "denominator": 24,
+        "groups": 8,
+        "value": 0.4166666666666667,
+        "bootstrap_95": [
+          0.125,
+          0.75
+        ]
+      },
+      "completion_without_errors": {
+        "numerator": 10,
+        "denominator": 16,
+        "groups": 6,
+        "value": 0.625,
+        "bootstrap_95": [
+          0.25,
+          1.0
+        ]
+      },
+      "candidate_recall": {
+        "numerator": 24,
+        "denominator": 24,
+        "groups": 8,
+        "value": 1.0,
+        "bootstrap_95": [
+          1.0,
+          1.0
+        ]
+      },
+      "errors": {
+        "model_or_parse_error:BadRequestError:tool_use_failed": 8
+      }
+    },
+    "explicit_scope": {
+      "completion": {
+        "numerator": 12,
+        "denominator": 24,
+        "groups": 8,
+        "value": 0.5,
+        "bootstrap_95": [
+          0.125,
+          0.875
+        ]
+      },
+      "completion_without_errors": {
+        "numerator": 12,
+        "denominator": 18,
+        "groups": 6,
+        "value": 0.6666666666666666,
+        "bootstrap_95": [
+          0.3333333333333333,
+          1.0
+        ]
+      },
+      "candidate_recall": {
+        "numerator": 24,
+        "denominator": 24,
+        "groups": 8,
+        "value": 1.0,
+        "bootstrap_95": [
+          1.0,
+          1.0
+        ]
+      },
+      "errors": {
+        "model_or_parse_error:BadRequestError:tool_use_failed": 6
+      }
+    }
+  },
+  "trial_wall_time_ms": {
+    "automatic": {
+      "median": 12850.064299998849,
+      "p95": 33406.74819999913,
+      "n": 24
+    },
+    "explicit_scope": {
+      "median": 10820.213500001046,
+      "p95": 15138.128300000972,
+      "n": 24
+    }
+  }
+}

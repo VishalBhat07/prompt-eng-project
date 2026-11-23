@@ -24,5 +24,8 @@ export interface BenchDoc {
   cross_tool_gain: string[];
   baselines: Record<string, { caught: number; ids: string[] }>;
   ablation: Record<string, { caught: number; ids: string[] }>;
-  latency: { mean_s: number; p95_s: number; n: number };
+  latency: { mean_s: number; median_s: number; p95_s: number; n: number };
+  case_results?: { id: string; category: string; kind: string; metric_group: string;
+    expected_findings?: string[]; patterns?: string[]; expected_verdict?: string; verdict?: string;
+    expected_integrity?: string; integrity?: string; expected_origin?: string; origin?: string }[];
 }

@@ -6,7 +6,7 @@ interface RunReport {
   session_id: string; outcome: string; halted_reason: string; provider?: string; model?: string; policy?: string;
   calls: { tool: string; verdict?: string }[];
 }
-interface Pending { id: string; session: string; server: string; tool: string; expires_at: number; argument_fields?: string[]; arguments_sha256?: string; data_class?: string }
+interface Pending { id: string; session: string; server: string; tool: string; expires_at: number; argument_fields?: string[]; arguments_sha256?: string; data_class?: string; reason?: string; destination_label?: string | null }
 
 function runExplanation(reason: string) {
   if (reason.includes('rate_limit')) return 'The model provider reached a usage or token limit. Select fewer servers, retry after a minute, or choose another configured model.';
@@ -170,6 +170,8 @@ export default function Demo() {
       {pending.map((item) => <div key={item.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
         <strong>Approval required: {item.server}/{item.tool}</strong>
         <p>Argument fields: {item.argument_fields?.join(', ') || 'none'} · Data class: {item.data_class ?? 'unknown'}</p>
+        {item.reason && <p>{item.reason}</p>}
+        <p>Destination: {item.destination_label ?? 'No reviewed destination recorded'}</p>
         {item.arguments_sha256 && <p className="mono">Argument hash: {item.arguments_sha256.slice(0, 16)}</p>}
         <p>Expires {new Date(item.expires_at * 1000).toLocaleTimeString()}. The agent will resume only if you grant this exact call.</p>
         <button onClick={() => decide(item, true)}>Grant once</button> <button onClick={() => decide(item, false)}>Deny</button>

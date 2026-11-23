@@ -1,0 +1,36 @@
+version: 1
+repeats: 3
+seed: 20261122
+tasks:
+  - id: B01
+    task: Look up book B101 in the local catalog. Give its exact title.
+    required: [catalog/find_book]
+    answer_terms: ["River Atlas"]
+  - id: B02
+    task: Look up book B202 in the local catalog. Give its exact title.
+    required: [catalog/find_book]
+    answer_terms: ["Cloud Almanac"]
+  - id: B03
+    task: Look up the shelf for book B101. Give its exact shelf identifier.
+    required: [shelves/find_shelf]
+    answer_terms: ["K-14"]
+  - id: B04
+    task: Look up the shelf for book B202. Give its exact shelf identifier.
+    required: [shelves/find_shelf]
+    answer_terms: ["M-22"]
+  - id: B05
+    task: Use the local hours tool to find the closing time for Cedar library.
+    required: [hours/find_hours]
+    answer_terms: ["18:45"]
+  - id: B06
+    task: Use the local hours tool to find the closing time for Birch library.
+    required: [hours/find_hours]
+    answer_terms: ["16:30"]
+  - id: B07
+    task: Look up both the exact title and shelf identifier for book B101 using the catalog and shelves tools.
+    required: [catalog/find_book, shelves/find_shelf]
+    answer_terms: ["River Atlas", "K-14"]
+  - id: B08
+    task: Look up both the exact title and shelf identifier for book B202 using the catalog and shelves tools.
+    required: [catalog/find_book, shelves/find_shelf]
+    answer_terms: ["Cloud Almanac", "M-22"]

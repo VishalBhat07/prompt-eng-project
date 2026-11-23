@@ -78,7 +78,7 @@ Open `http://127.0.0.1:5173`. Restart the gateway after changing `.env` or backe
 
 4. **Sessions and Graph:** `/sessions` lists live and saved sessions. `/graph?session=ID` shows the selected run's observed and possible paths, and the ordered agent choices. These pages and Findings refresh while open. The old bundled sample session has been removed.
 
-5. **Approvals:** `/approvals` shows live pending requests. The Run a task page also shows the request for its own session, argument field names, data class, and an argument hash without displaying raw payloads. A grant is valid only for the matching retry and expires; a deny stops that pending action. Approval requests do not persist after proxy restart.
+5. **Findings and approvals:** In Findings, expand **Why was this blocked?** to see the proposed tool, the gateway check, and any policy and graph evidence recorded at decision time. Follow **Inspect evidence in graph** to focus on the relevant nodes. Earlier run files may lack call-level explanations. Pending approvals appear on `/approvals` and on the task page. A grant applies once to the matching call, and a denial stops it.
 
 6. **Benchmark:** `/benchmark` shows the 19-case synthetic trace benchmark, its baselines and ablations, and a separate list of saved model runs. Refresh the synthetic artifact with `.\.venv-phase2\Scripts\python.exe scripts/export_dashboard_benchmark.py`. These numbers are not yet a repeated Groq attack benchmark.
 

@@ -85,11 +85,14 @@ function ServerCard({ inventory, approving, onApprove }: {
   const [open, setOpen] = useState(false);
   const displayName = inventory.server_info?.name || inventory.server_id;
   return (
-    <section className="card" style={{ padding: 22 }}>
+    <details className="card" style={{ padding: '12px 16px', minWidth: 0 }}>
+      <summary style={{ cursor: 'pointer', overflowWrap: 'anywhere' }}>
+        <strong>{displayName}</strong>{displayName !== inventory.server_id && ` (${inventory.server_id})`}
+        {' · '}{inventory.tools.length} tools · {inventory.integrity_status} · {inventory.assessment?.risk_band ?? 'Not assessed'}
+      </summary>
+      <div style={{ paddingTop: 14 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 240, flex: 1 }}>
-          <h2 style={{ fontSize: 20 }}>{displayName}</h2>
-          <p className="mono" style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>{inventory.server_id}</p>
           {inventory.endpoint_url && <p className="mono" style={{ color: 'var(--faint)', fontSize: 11, marginTop: 4, overflowWrap: 'anywhere' }}>{inventory.endpoint_url}</p>}
           {inventory.last_seen && <p style={{ color: 'var(--faint)', fontSize: 11, marginTop: 4 }}>Last inventoried {new Date(inventory.last_seen).toLocaleString()}</p>}
         </div>
@@ -154,7 +157,8 @@ function ServerCard({ inventory, approving, onApprove }: {
           </p>
         </div>
       )}
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -169,6 +173,11 @@ export default function Inventory() {
   const [refreshing, setRefreshing] = useState(false);
   const [approvingServer, setApprovingServer] = useState('');
   const [notice, setNotice] = useState('');
+  const [search, setSearch] = useState('');
+  const query = search.trim().toLowerCase();
+  const visibleInventories = inventories.filter((item) =>
+    [item.server_id, item.server_info?.name, ...item.tools.flatMap((tool) => [tool.name, tool.title])]
+      .some((name) => name?.toLowerCase().includes(query)));
   useEffect(() => {
     fetchInventories()
       .then(setInventories)
@@ -269,8 +278,13 @@ export default function Inventory() {
       {!loading && !error && inventories.length === 0 && (
         <p style={{ color: 'var(--muted)' }}>No saved inventories yet. Run the MCP inventory command to add a server snapshot.</p>
       )}
-      <div style={{ display: 'grid', gap: 16 }}>
-        {inventories.map((inventory) => <ServerCard key={inventory.server_id} inventory={inventory}
+      {inventories.length > 0 && <label style={{ display: 'block', marginBottom: 12 }}>
+        Search servers and tools <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+          style={{ maxWidth: '100%' }} />
+      </label>}
+      {query && !loading && visibleInventories.length === 0 && <p>No matching servers or tools.</p>}
+      <div style={{ display: 'grid', gap: 8 }}>
+        {visibleInventories.map((inventory) => <ServerCard key={inventory.server_id} inventory={inventory}
           approving={approvingServer === inventory.server_id} onApprove={approveSnapshot} />)}
       </div>
     </div>

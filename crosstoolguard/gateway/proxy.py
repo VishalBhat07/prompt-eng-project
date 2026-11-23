@@ -41,7 +41,8 @@ from crosstoolguard.gateway.agent_runner import AgentRun
 from crosstoolguard.gateway.schemas import DataClass, Event, EventType, ToolCall, Trust, Verdict
 from crosstoolguard.gateway.session import ensure_session
 from crosstoolguard.gateway.transport import call_upstream, list_tools
-from crosstoolguard.policy.engine import decide_for_session, reasons_for
+from crosstoolguard.policy.engine import decide, reasons_for
+from crosstoolguard.policy.evaluator import finding_signals
 from crosstoolguard.policy.explain import explain_finding
 from crosstoolguard.provenance.events import classify_content, hash_arguments, redact
 from crosstoolguard.registry.capabilities import extract_capabilities, PRIVILEGED_CAPS, sensitivity_for_path
@@ -194,6 +195,7 @@ PRIVILEGED_TOOLS = {"upload_file"}
 SESSION_EVENTS: dict[str, list[Event]] = {}
 SESSION_LAST_OUTPUT: dict[str, str] = {}
 SESSION_DECISIONS: dict[str, list[str]] = {}
+SESSION_BLOCKS: dict[str, list[dict]] = {}
 APPROVALS: dict[str, float] = {}
 PENDING_APPROVALS: dict[str, float] = {}
 PENDING_APPROVAL_INFO: dict[str, dict] = {}
@@ -278,6 +280,31 @@ def _decision_response(session_id: str, payload: dict) -> dict:
     return payload
 
 
+def _session_policy(events: list[Event]) -> tuple[Verdict, list[dict]]:
+    graph, findings = analyze_with_graph(events)
+    decisions = reasons_for(graph, findings)
+    evidence = []
+    for finding, (policy, action) in zip(findings, decisions):
+        if action != Verdict.BLOCK.value:
+            continue
+        signals = finding_signals(graph, finding)
+        evidence.append({"policy": policy, "pattern": finding.pattern, "node_ids": finding.path,
+                         "tools": finding.tool_sequence, "data_classes": sorted(signals["data_classes"]),
+                         "capabilities": sorted(signals["capabilities"])})
+    return decide([action for _, action in decisions]), evidence
+
+
+def _blocked_call(session_id: str, server: str, tool: str, reason: str, *,
+                  check: str, event: Event | None = None, evidence: list[dict] | None = None) -> dict:
+    SESSION_EVENTS.setdefault(session_id, [])
+    blocks = SESSION_BLOCKS.setdefault(session_id, [])
+    blocks.append({"id": event.event_id if event else uuid.uuid4().hex, "server": server,
+                   "tool": tool, "reason": reason, "check": check, "evidence": evidence or [],
+                   "call_node_id": f"tool:{event.tool}:{event.event_id}" if event else None})
+    del blocks[:-_EVENT_CAP]
+    return _decision_response(session_id, {"verdict": Verdict.BLOCK.value, "result": None, "reason": reason})
+
+
 def _record_call(req: ToolCall, session_id: str,
                  capabilities: set[str] | None = None) -> Event:
     data_class = DataClass.PUBLIC
@@ -342,12 +369,16 @@ def execute_tool_call(req: ToolCall, session_id: str) -> dict:
         return _decision_response(session_id, {"verdict": Verdict.ALLOW.value, "result": result, "reason": "monitor: log only"})
 
     try:
-        verdict = decide_for_session(SESSION_EVENTS[session_id])
+        verdict, evidence = _session_policy(SESSION_EVENTS[session_id])
     except Exception:
         verdict = Verdict.BLOCK if is_privileged(req.tool) else Verdict.MONITOR
+        evidence = []
 
     if verdict == Verdict.BLOCK:
-        return _decision_response(session_id, {"verdict": verdict.value, "result": None, "reason": "policy: secret-never-external"})
+        reason = ("Session policy blocked the proposed tool call." if evidence else
+                  "Policy evaluation failed, so the gateway blocked the sensitive call.")
+        return _blocked_call(session_id, req.server, req.tool, reason,
+                             check="session_policy" if evidence else "policy_error", event=call_event, evidence=evidence)
     if verdict in (Verdict.APPROVAL, Verdict.QUARANTINE):
         aid = approval_id_for(session_id, req.server, req.tool, call_event.args_hash)
         _request_approval(aid)
@@ -355,6 +386,8 @@ def execute_tool_call(req: ToolCall, session_id: str) -> dict:
                                       "tool": req.tool, "expires_at": PENDING_APPROVALS.get(aid),
                                       "argument_fields": sorted(req.arguments),
                                       "arguments_sha256": call_event.args_hash,
+                                      "reason": "Session policy requires approval for the proposed call.",
+                                      "destination_label": None,
                                       "data_class": call_event.data_class.value}
         if req.approval_id == aid and _consume_approval(aid):
             result = call_upstream(req.server, req.tool, req.arguments)
@@ -513,6 +546,7 @@ async def _run_approved_agent(session_id: str, body: MultiServerRunRequest,
         graph = api_graph(session_id)
         alerts = api_alerts(session_id)["alerts"]
         snapshot = {"session": session_id, **graph, "alerts": alerts,
+                    "blocks": SESSION_BLOCKS.get(session_id, []),
                     "events": [event.model_dump(mode="json") for event in SESSION_EVENTS.get(session_id, [])],
                     "report": report}
         save_run(session_id, snapshot)
@@ -681,16 +715,19 @@ async def api_mcp_tool_call(body: RemoteMCPToolCall) -> dict:
     from crosstoolguard.registry.capabilities import extract_capabilities
     from crosstoolguard.registry.tools import ToolRegistry
 
+    session_id = ensure_session(body.session_id)
+
+    def inventory_block(reason: str) -> dict:
+        return _blocked_call(session_id, body.server_id, body.tool, reason, check="inventory")
+
     registry = ToolRegistry(os.getenv("REGISTRY_DB", "registry.db"))
     try:
         saved = registry.get_server_inventory(body.server_id)
         if saved is None or saved.get("integrity_status") != "APPROVED":
-            return {"verdict": Verdict.BLOCK.value, "result": None,
-                    "reason": "server inventory is missing or not operator-approved"}
+            return inventory_block("Server inventory is missing or not operator-approved.")
         endpoint_url = saved.get("endpoint_url")
         if not endpoint_url:
-            return {"verdict": Verdict.BLOCK.value, "result": None,
-                    "reason": "server has no saved Streamable HTTP endpoint"}
+            return inventory_block("Server has no saved Streamable HTTP endpoint.")
         _validate_inventory_target(endpoint_url)
         from crosstoolguard.registry.mcp_inspector import inventory_from_session, open_mcp_session
 
@@ -702,17 +739,14 @@ async def api_mcp_tool_call(body: RemoteMCPToolCall) -> dict:
             status = registry.register_server_inventory(current)
             if status.inventory_hash != saved["inventory_hash"] or status.integrity_status != "APPROVED":
                 registry.save_assessment(body.server_id, assess_inventory(current))
-                return {"verdict": Verdict.BLOCK.value, "result": None,
-                        "reason": "server inventory changed or is no longer approved; review the new fingerprint"}
+                return inventory_block("Server inventory changed or is no longer approved; review the new fingerprint.")
 
             definition = next((item for item in current["tools"] if item.get("name") == body.tool), None)
             if definition is None:
-                return {"verdict": Verdict.BLOCK.value, "result": None,
-                        "reason": "requested tool is not in the approved inventory"}
+                return inventory_block("Requested tool is not in the approved inventory.")
             saved_tool = next((item for item in saved["tools"] if item.get("name") == body.tool), None)
             if not saved_tool or saved_tool.get("_registry", {}).get("integrity_status") != "APPROVED":
-                return {"verdict": Verdict.BLOCK.value, "result": None,
-                        "reason": "requested tool fingerprint is not operator-approved"}
+                return inventory_block("Requested tool fingerprint is not approved.")
 
             capability_text = " ".join(
                 str(definition.get(field) or "") for field in ("title", "description")
@@ -720,24 +754,33 @@ async def api_mcp_tool_call(body: RemoteMCPToolCall) -> dict:
             capabilities = extract_capabilities(body.tool, capability_text)
             request = ToolCall(session_id=body.session_id, server=body.server_id, tool=body.tool,
                                arguments=body.arguments, approval_id=body.approval_id)
-            session_id = ensure_session(body.session_id)
             call_event = _record_call(request, session_id, capabilities=capabilities)
             schema_error = _validate_tool_arguments(definition, body.arguments)
             if schema_error:
-                return _decision_response(session_id, {"verdict": Verdict.BLOCK.value, "result": None,
-                        "reason": f"tool arguments rejected before the MCP server was invoked: {schema_error}"})
+                return _blocked_call(session_id, body.server_id, body.tool,
+                                     f"Tool arguments failed the reviewed input schema: {schema_error}",
+                                     check="input_schema", event=call_event)
             verdict = Verdict.ALLOW
             if os.getenv("MODE", "monitor") == "enforcing":
                 try:
-                    verdict = decide_for_session(SESSION_EVENTS[session_id])
+                    verdict, evidence = _session_policy(SESSION_EVENTS[session_id])
                 except Exception:
                     verdict = Verdict.BLOCK if is_privileged(body.tool, capabilities) else Verdict.MONITOR
+                    evidence = []
                 if verdict == Verdict.BLOCK:
-                    return _decision_response(session_id, {"verdict": verdict.value, "result": None,
-                            "reason": "policy blocked the call before the MCP server was invoked"})
+                    reason = ("Session policy blocked the proposed call before the MCP server was invoked." if evidence else
+                              "Policy evaluation failed, so the gateway blocked the sensitive call.")
+                    return _blocked_call(session_id, body.server_id, body.tool, reason,
+                        check="session_policy" if evidence else "policy_error", event=call_event, evidence=evidence)
+                approval_reasons = []
+                if verdict in (Verdict.APPROVAL, Verdict.QUARANTINE):
+                    approval_reasons.append("Session policy flagged the proposed call.")
                 if is_privileged(body.tool, capabilities):
+                    approval_reasons.append("Tool has a sensitive capability: " +
+                                            ", ".join(sorted(capabilities & PRIVILEGED_CAPS) or ["restricted tool"]) + ".")
                     verdict = Verdict.APPROVAL
                 if call_event.data_class in {DataClass.SECRET, DataClass.CREDENTIAL}:
+                    approval_reasons.append("Arguments contain data classified as " + call_event.data_class.value + ".")
                     verdict = Verdict.APPROVAL
                 if verdict in (Verdict.APPROVAL, Verdict.QUARANTINE):
                     aid = approval_id_for(session_id, body.server_id, body.tool, call_event.args_hash)
@@ -747,10 +790,12 @@ async def api_mcp_tool_call(body: RemoteMCPToolCall) -> dict:
                                                   "expires_at": PENDING_APPROVALS.get(aid),
                                                   "argument_fields": sorted(body.arguments),
                                                   "arguments_sha256": call_event.args_hash,
+                                                  "reason": " ".join(approval_reasons),
+                                                  "destination_label": None,
                                                   "data_class": call_event.data_class.value}
                     if body.approval_id != aid or not _consume_approval(aid):
                         return _decision_response(session_id, {"verdict": Verdict.APPROVAL.value, "result": None,
-                                "approval_id": aid, "reason": "sensitive or policy-flagged remote call requires approval"})
+                                "approval_id": aid, "reason": " ".join(approval_reasons)})
                     verdict = Verdict.ALLOW
 
             result = await asyncio.wait_for(session.call_tool(body.tool, body.arguments), timeout=45)
@@ -864,6 +909,7 @@ def api_clear_sessions() -> dict:
     SESSION_EVENTS.clear()
     SESSION_LAST_OUTPUT.clear()
     SESSION_DECISIONS.clear()
+    SESSION_BLOCKS.clear()
     RUN_STATUS.clear()
     with _APPROVAL_LOCK:
         PENDING_APPROVALS.clear()
@@ -893,6 +939,7 @@ def api_session(session_id: str) -> dict:
     return {"session": session_id, **graph,
             "events": [event.model_dump(mode="json") for event in SESSION_EVENTS.get(session_id, [])],
             "alerts": api_alerts(session_id)["alerts"],
+            "blocks": SESSION_BLOCKS.get(session_id, saved.get("blocks", []) if saved else []),
             "report": RUN_STATUS.get(session_id, {}).get("report") or
                       (saved.get("report") if saved else None)}
 

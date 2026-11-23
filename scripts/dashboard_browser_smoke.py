@@ -93,6 +93,12 @@ def smoke():
                 page.get_by_label("Inventory ID").fill("fixture-send")
                 page.get_by_label("MCP server URL").fill(fixture_url + "/mcp")
                 page.get_by_role("button", name="Inventory server").click()
+                card = page.locator("summary").filter(has_text="fixture-send")
+                expect(card).to_be_visible()
+                expect(page.get_by_role("button", name="Approve and pin this exact fingerprint")).to_be_hidden()
+                page.get_by_role("searchbox").fill("inspect_mock_sink")
+                expect(card).to_be_visible()
+                card.click()
                 page.get_by_role("button", name="Approve and pin this exact fingerprint").click()
                 expect(page.get_by_role("button", name="Revoke approval")).to_be_visible()
                 page.get_by_role("button", name="Revoke approval").click()
@@ -100,6 +106,7 @@ def smoke():
                 page.goto(ui_url + "/demo")
                 expect(page.get_by_text("No approved servers.", exact=False)).to_be_visible()
                 page.goto(ui_url + "/inventory")
+                page.locator("summary").filter(has_text="fixture-send").click()
                 page.get_by_role("button", name="Approve and pin this exact fingerprint").click()
                 expect(page.get_by_role("button", name="Revoke approval")).to_be_visible()
                 page.goto(ui_url + "/demo")
@@ -129,13 +136,42 @@ def smoke():
                 page.get_by_role("button", name="Deny", exact=True).click()
                 expect(page.get_by_text("approval_denied_or_expired", exact=False)).to_be_visible()
                 expect(page.get_by_text("fixture-send/send_data → ALLOW")).to_have_count(0)
+                counter = httpx.post(gateway_url + "/api/mcp/tools/call", json={
+                    "session_id": "smoke-counter", "server_id": "fixture-send",
+                    "tool": "inspect_mock_sink", "arguments": {},
+                })
+                counter.raise_for_status()
+                counter_body = counter.json()
+                assert counter_body["verdict"] == "ALLOW"
+                assert json.loads(counter_body["result"])["item_count"] == 1
+                invalid = httpx.post(gateway_url + "/api/mcp/tools/call", json={
+                    "session_id": "smoke-invalid-args", "server_id": "fixture-send",
+                    "tool": "send_data", "arguments": {"content": 123},
+                })
+                assert invalid.json()["verdict"] == "BLOCK"
+                page.goto(ui_url + "/findings")
+                block = page.get_by_text("Why was this blocked?", exact=False)
+                block.click()
+                expect(page.get_by_text("Tool arguments failed the reviewed input schema", exact=False)).to_be_visible()
+                page.get_by_role("link", name="Inspect evidence in graph").click()
+                assert "focus=" in page.url
                 api.terminate()
                 api.wait(timeout=10)
                 api = start(gateway_cmd)
                 wait_http(gateway_url + "/healthz", api)
                 page.goto(graph_url)
                 expect(page.get_by_text("fixture-send/send_data → ALLOW")).to_be_visible()
+                page.goto(ui_url + "/benchmark")
+                baseline = page.get_by_role("group", name="Single-output detector")
+                graph = page.get_by_role("group", name="CrossToolGuard session graph")
+                expect(baseline.get_by_text("Proposed call")).to_be_visible()
+                expect(graph.get_by_text("Recorded parent")).to_be_visible()
+                page.get_by_label("Case pair").select_option("M06")
+                page.get_by_label("Variant").select_option("control")
+                expect(page.get_by_text("M06-control", exact=False)).to_be_visible()
+                expect(page.get_by_text("Alert · Verdict ALLOW", exact=True)).to_be_visible()
                 page.set_viewport_size({"width": 390, "height": 844})
+                assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "/benchmark"
                 for route in ["/demo", "/inventory", "/sessions", "/approvals", "/findings"]:
                     page.goto(ui_url + route)
                     expect(page.get_by_role("heading", level=1)).to_be_visible()

@@ -278,6 +278,12 @@ def test_alerts_contain_explanation():
                 if alert["pattern"] == "secret_exfiltration")
     for needle in ("read_file", "upload_file", "secret-never-external", "BLOCK"):
         assert needle in text
+    detail = c.get("/api/sessions/S-ALERTS").json()
+    block = next(item for item in detail["blocks"] if item["tool"] == "upload_file")
+    assert block["check"] == "session_policy"
+    assert block["call_node_id"] in {node["id"] for node in detail["nodes"]}
+    assert any(item["policy"] == "secret-never-external" and "SECRET" in item["data_classes"]
+               for item in block["evidence"])
 
 
 def test_explain_names_origin_policy_decision():

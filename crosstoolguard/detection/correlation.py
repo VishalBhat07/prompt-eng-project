@@ -81,9 +81,10 @@ def _enrich_instructions(graph: nx.DiGraph, events: list[Event]) -> None:
         _wire_instruction(graph, nid, events, anchor.event_id)
 
 
-def analyze_with_graph(events: list[Event]) -> tuple[nx.DiGraph, list[Finding]]:
+def analyze_with_graph(events: list[Event], *, enrich_instructions: bool = True) -> tuple[nx.DiGraph, list[Finding]]:
     graph = build(events)
-    _enrich_instructions(graph, events)
+    if enrich_instructions:
+        _enrich_instructions(graph, events)
     findings: list[Finding] = []
     seen: set[tuple[str, tuple[str, ...]]] = set()
     for pattern in load_patterns():
