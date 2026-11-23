@@ -190,7 +190,21 @@ def smoke():
                 page.set_viewport_size({"width": 390, "height": 844})
                 assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "/graph"
                 page.goto(ui_url + "/benchmark")
-                expect(page.get_by_text("No benchmark results to display.")).to_be_visible()
+                expect(page.get_by_text("100 synthetic replay cases", exact=True)).to_be_visible()
+                expect(page.get_by_role("heading", name="Alert comparison")).to_be_visible()
+                alert_chart = page.get_by_role("region", name="Alert comparison results")
+                expect(alert_chart.get_by_text("(42/48)")).to_be_visible()
+                expect(alert_chart.get_by_text("19/22", exact=True)).to_be_visible()
+                expect(alert_chart.locator(".benchmark-bar")).to_have_count(8)
+                expect(page.get_by_role("region", name="Graph path and policy results").get_by_text("(27/29)")).to_be_visible()
+                expect(page.get_by_role("link", name="MCP conformance", exact=True)).to_have_attribute(
+                    "href", "https://github.com/modelcontextprotocol/conformance"
+                )
+                example = page.locator("details").filter(has_text="Restricted formatting and public delivery use different branches")
+                expect(example.get_by_text("References step 4", exact=False)).to_be_hidden()
+                example.locator("summary").click()
+                expect(example.get_by_text("References step 4", exact=False)).to_be_visible()
+                expect(example.get_by_text("No alert · No risk path · ALLOW")).to_have_count(2)
                 assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "/benchmark"
                 for route in ["/demo", "/inventory", "/sessions", "/approvals", "/findings"]:
                     page.goto(ui_url + route)
@@ -208,7 +222,7 @@ def smoke():
                 if process.poll() is None:
                     process.terminate()
                     process.wait(timeout=10)
-    print("Browser smoke passed: inventory, task, approvals, saved graph, and narrow-screen keyboard navigation.")
+    print("Browser smoke passed: inventory, task, approvals, saved graph, benchmark charts and evidence, and narrow-screen keyboard navigation.")
 
 
 if __name__ == "__main__":

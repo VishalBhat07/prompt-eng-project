@@ -1,0 +1,31 @@
+.benchmark-page { display: grid; min-width: 0; gap: 32px; padding: 56px 0 36px; }
+.benchmark-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.benchmark-heading a { color: var(--accent); font-size: 14px; }
+.benchmark-section { display: grid; min-width: 0; gap: 12px; }
+.benchmark-muted { color: var(--muted); font-size: 14px; }
+.benchmark-scope, .benchmark-case { padding: 18px; }
+.benchmark-scope strong { font-size: 20px; }
+.benchmark-table { overflow-x: auto; min-width: 0; }
+.benchmark-table table { width: 100%; border-collapse: collapse; }
+.benchmark-table th, .benchmark-table td { padding: 12px 16px; text-align: left; vertical-align: top; }
+.benchmark-table tbody tr { border-top: 1px solid var(--line); }
+.benchmark-table small { display: block; max-width: 38ch; color: var(--muted); font-weight: 400; }
+.benchmark-rate { display: grid; gap: 6px; min-width: 70px; }
+.benchmark-bar { height: 7px; background: var(--track); border-radius: 999px; overflow: hidden; }
+.benchmark-bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.benchmark-bar .benchmark-bar-adverse { background: var(--crit); }
+.benchmark-case { overflow-wrap: anywhere; }
+.benchmark-case summary { cursor: pointer; }
+.benchmark-case summary span { display: block; color: var(--muted); font-size: 14px; padding-inline-start: 17px; }
+.benchmark-case-body { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.benchmark-flow { list-style: decimal; display: grid; gap: 8px; padding-inline-start: 26px; }
+.benchmark-outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: 8px; }
+.benchmark-outcomes li { display: grid; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); }
+.benchmark-outcomes small { color: var(--muted); }
+.benchmark-references { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--accent); font-size: 14px; }
+.benchmark-references a { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 550px) {
+  .benchmark-page { padding-top: 28px; }
+  .benchmark-table th, .benchmark-table td { padding: 8px; }
+}

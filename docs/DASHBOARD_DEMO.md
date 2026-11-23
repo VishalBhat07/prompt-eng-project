@@ -101,7 +101,7 @@ Restart the gateway after the catalog update so it reloads the exact allowed hos
 - Sessions has **Clear saved runs**, which calls `DELETE /api/sessions` and keeps approved inventories.
 - Inventory shows the last inventory time and has **Refresh inventories**.
 - `/api/graph` and `/api/alerts` now return the saved snapshot after a proxy restart, so deep links keep working.
-- Benchmark counts are read from `benchmark.json` instead of hardcoded `/8`, and recorded runs can be refreshed.
+- Benchmark reads the [V3 replay report](SESSION_BENCHMARK_V3.md). Recorded live runs are available under Sessions.
 - Graph "Suspicious only" includes suspicious-output signal nodes, not just completed attack paths.
 - Findings separates observed attack paths, suspicious output signals, and possible harm paths with counts.
 - **Run a task** searches all approved servers by default. It uses task words to rank tool names and descriptions and fits candidates into the configurable initial catalog budget (20,000 characters by default). Optional server scope narrows the same search. The shortlist is heuristic and provider quotas still apply.
