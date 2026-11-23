@@ -110,6 +110,10 @@ def smoke():
                 page.get_by_role("button", name="Approve and pin this exact fingerprint").click()
                 expect(page.get_by_role("button", name="Revoke approval")).to_be_visible()
                 page.goto(ui_url + "/demo")
+                expect(page.get_by_label("Model provider")).to_be_hidden()
+                page.get_by_text("Run settings", exact=False).click()
+                expect(page.get_by_label("Model provider")).to_be_visible()
+                page.get_by_text("Run settings", exact=False).click()
                 page.get_by_label("Task", exact=True).fill("Inspect the local mock destination count")
                 page.get_by_role("button", name="Run task").click()
                 expect(page.get_by_text("Fixture task complete.")).to_be_visible()
@@ -134,8 +138,8 @@ def smoke():
                 page.get_by_role("button", name="Run task").click()
                 expect(page.get_by_text("Approval required: fixture-send/send_data")).to_be_visible()
                 page.get_by_role("button", name="Deny", exact=True).click()
-                expect(page.get_by_text("approval_denied_or_expired", exact=False)).to_be_visible()
-                expect(page.get_by_text("fixture-send/send_data → ALLOW")).to_have_count(0)
+                expect(page.get_by_text("The sensitive action was not executed", exact=False)).to_be_visible()
+                expect(page.get_by_role("region", name="Task result").locator("[data-verdict='ALLOW']")).to_have_count(0)
                 counter = httpx.post(gateway_url + "/api/mcp/tools/call", json={
                     "session_id": "smoke-counter", "server_id": "fixture-send",
                     "tool": "inspect_mock_sink", "arguments": {},

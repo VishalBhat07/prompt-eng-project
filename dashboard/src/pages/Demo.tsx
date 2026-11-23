@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchInventories, type MCPInventory } from '../api';
+import './Demo.css';
 
 interface RunReport {
   session_id: string; outcome: string; halted_reason: string; provider?: string; model?: string; policy?: string;
@@ -63,6 +64,16 @@ export default function Demo() {
     return () => { active = false; window.clearInterval(timer); };
   }, []);
   const approvedServers = catalog ?? [];
+  const approvedTools = approvedServers.reduce((total, server) => total + server.tools.length, 0);
+  const busy = ['starting', 'running', 'awaiting_approval'].includes(status);
+  const canRun = Boolean(task.trim() && !catalogError && approvedServers.length
+    && (!manualScope || selectedServers.length) && !busy
+    && providers.find((item) => item.id === provider)?.configured !== false);
+  const runStatus = status === 'awaiting_approval' ? 'Waiting for approval' :
+    status === 'starting' ? 'Starting' : status === 'running' ? 'Running' :
+    report?.outcome === 'COMPLETED' ? 'Completed' : report?.outcome === 'BLOCKED' ? 'Blocked' :
+    report?.outcome === 'INCOMPLETE' ? 'Incomplete' :
+    status === 'error' || report?.outcome === 'ERROR' ? 'Run error' : status === 'complete' ? 'Finished' : 'Ready';
 
   useEffect(() => { fetch('/api/llm/providers').then((r) => r.json()).then((body) => setProviders(body.providers ?? [])).catch(() => {}); }, []);
   useEffect(() => {
@@ -93,6 +104,7 @@ export default function Demo() {
   }, [session, status]);
 
   const start = async () => {
+    if (!canRun) return;
     setError(''); setReport(null); setAnswer(''); setSession(''); setPending([]); setStatus('starting');
     try {
       const response = await fetch('/api/mcp/agent/run', {
@@ -119,15 +131,31 @@ export default function Demo() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Approval decision failed'); }
   };
 
-  return <div>
-    <header style={{ padding: '56px 0 28px', maxWidth: 760 }}><span className="eyebrow">Agent workspace</span>
-      <h1>Run a task</h1><p className="sub">Enter a task to discover relevant tools from approved MCP servers. CrossToolGuard checks each call and records the evidence.</p></header>
-    <div className="card" style={{ padding: 22, display: 'grid', gap: 16 }}>
+  return <div className="demo-page">
+    <header className="demo-heading">
+      <h1>Run a task</h1><p className="sub">Describe what you need. The agent chooses tools from your approved MCP servers.</p>
+    </header>
+    <div className="demo-workspace">
+    <form className="card demo-composer" onSubmit={(event) => { event.preventDefault(); void start(); }}>
+      <div><label className="demo-label" htmlFor="agent-task">Task</label>
+        <textarea id="agent-task" value={task} onChange={(e) => setTask(e.target.value)}
+          placeholder="Find invoice INV-1042 and summarize its total and status." rows={4} />
+      </div>
       {catalogError ? <p role="alert">{catalogError}</p> : !catalog ? <p role="status">Loading approved servers…</p>
         : catalog.length === 0 && <p>No approved servers. <Link to="/inventory">Review and approve an inventory</Link>.</p>}
-      {approvedServers.length > 0 && <details><summary>{approvedServers.reduce((sum, item) => sum + item.tools.length, 0)} approved tools across {approvedServers.length} servers</summary>
-        {approvedServers.map((item) => <p key={item.server_id}>{item.server_id}: {item.tools.map((tool) => tool.name).join(', ')}</p>)}
-      </details>}
+      <details className="demo-settings">
+        <summary>Run settings <span>{provider} · {policy}</span></summary>
+        <div className="demo-settings-body">
+        <div className="demo-settings-grid">
+          <label>Model provider<select value={provider} onChange={(e) => { setProvider(e.target.value); setModel(''); }}>
+            {!providers.length && <option value={provider}>{provider}</option>}
+            {providers.map((item) => <option key={item.id} value={item.id} disabled={!item.configured}>{item.id}{item.configured ? '' : ' (not configured)'}</option>)}
+          </select></label>
+          <label>Model<select value={model} onChange={(e) => setModel(e.target.value)}><option value="">Provider default</option>
+            {(providers.find((item) => item.id === provider)?.models ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
+          </select></label>
+          <label>Agent policy<select value={policy} onChange={(e) => setPolicy(e.target.value)}><option value="hardened">Hardened</option><option value="baseline">Baseline</option></select></label>
+        </div>
       <label><input type="checkbox" checked={manualScope} onChange={(event) => setManualScope(event.target.checked)} /> Limit discovery to selected servers</label>
       {manualScope && <fieldset disabled={!approvedServers.length || Boolean(catalogError)} style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
         <legend>Servers for this run ({selectedServers.length}/{approvedServers.length})</legend>
@@ -149,42 +177,56 @@ export default function Demo() {
           </label>)}
         </div>
       </fieldset>}
-      <div><label htmlFor="agent-task">Task</label><textarea id="agent-task" value={task} onChange={(e) => setTask(e.target.value)} placeholder="For example: Find invoice INV-1042 and summarize its total and status." rows={3} style={{ display: 'block', width: '100%', marginTop: 6 }} /></div>
-      <label>Model provider<br /><select value={provider} onChange={(e) => { setProvider(e.target.value); setModel(''); }}>
-        {providers.map((item) => <option key={item.id} value={item.id} disabled={!item.configured}>{item.id}{item.configured ? '' : ' (not configured)'}</option>)}
-      </select></label>
-      <label>Model<br /><select value={model} onChange={(e) => setModel(e.target.value)}><option value="">Provider default</option>
-        {(providers.find((item) => item.id === provider)?.models ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
-      </select></label>
-      <label>Agent policy<br /><select value={policy} onChange={(e) => setPolicy(e.target.value)}><option value="hardened">Hardened</option><option value="baseline">Baseline</option></select></label>
-      <p style={{ color: 'var(--muted)', fontSize: 13 }}>Approved tool descriptions, your task, and returned tool data go to the model provider. Use test data and review approved inventories before running.</p>
-      <button className="btn-primary" disabled={!task.trim() || Boolean(catalogError) || !approvedServers.length || (manualScope && !selectedServers.length) || status === 'starting' || status === 'running' || status === 'awaiting_approval'} onClick={start}>Run task</button>
-    </div>
-    {error && <p role="alert" style={{ color: 'var(--crit)' }}>{error}</p>}
-    {session && <section style={{ marginTop: 24 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0 }}>Session {session}</h2>
-        <button style={{ marginLeft: 'auto' }} onClick={() => { setTask(''); setSession(''); setStatus(''); setReport(null); setAnswer(''); setPending([]); setError(''); setParams({}); }}>Start another run</button>
+        </div>
+      </details>
+      <p className="demo-note">Your task and returned tool data are shared with the selected model provider.</p>
+      <div className="demo-actions">
+        <Link to="/inventory">{approvedTools} approved tools · {approvedServers.length} servers</Link>
+        <button className="btn-primary" type="submit" disabled={!canRun}>
+          {status === 'awaiting_approval' ? 'Waiting for approval' :
+            status === 'starting' ? 'Starting…' : status === 'running' ? 'Running…' : 'Run task'}
+        </button>
       </div>
-      <p>Status: {status} · {toolCount} candidate tools{availableToolCount > toolCount ? ` out of ${availableToolCount} approved` : ''}</p>
-      {pending.map((item) => <div key={item.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
+    {error && <p role="alert" style={{ color: 'var(--crit)' }}>{error}</p>}
+    </form>
+    <section className="card demo-output" aria-label="Task result">
+      <div className="demo-result-head">
+        <h2>Run result</h2>
+        <span className="demo-state" data-state={status} role="status">{runStatus}</span>
+      </div>
+      {!session && !busy && <p className="demo-note">Run a task to see the agent’s answer and tool decisions here.</p>}
+      {session && <>
+      <p className="demo-note">{toolCount} candidate tools{availableToolCount > toolCount ? ` out of ${availableToolCount} approved` : ''}</p>
+      {status === 'awaiting_approval' && pending.length === 0 && <p role="status">Loading approval request…</p>}
+      {pending.map((item) => <div key={item.id} className="demo-approval">
         <strong>Approval required: {item.server}/{item.tool}</strong>
         <p>Argument fields: {item.argument_fields?.join(', ') || 'none'} · Data class: {item.data_class ?? 'unknown'}</p>
         {item.reason && <p>{item.reason}</p>}
         <p>Destination: {item.destination_label ?? 'No reviewed destination recorded'}</p>
         {item.arguments_sha256 && <p className="mono">Argument hash: {item.arguments_sha256.slice(0, 16)}</p>}
         <p>Expires {new Date(item.expires_at * 1000).toLocaleTimeString()}. The agent will resume only if you grant this exact call.</p>
-        <button onClick={() => decide(item, true)}>Grant once</button> <button onClick={() => decide(item, false)}>Deny</button>
+        <div className="demo-decision"><button className="btn-primary" onClick={() => decide(item, true)}>Grant once</button><button onClick={() => decide(item, false)}>Deny</button></div>
       </div>)}
-      {report && <><p>Result: {report.outcome} · {report.halted_reason}</p>
-        <p className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>{report.provider ?? 'provider'} · {report.model ?? 'model'} · {report.policy ?? 'policy'}</p>
+      {report && <>
         {runExplanation(report.halted_reason) && <p role="status">{runExplanation(report.halted_reason)}</p>}
-        {answer && <div className="card" style={{ padding: 16, whiteSpace: 'pre-wrap' }}><strong>Agent answer</strong><p>{answer}</p></div>}
-        <ol>{report.calls.map((call, index) => <li key={`${call.tool}-${index}`} className="mono">{call.tool} → {call.verdict ?? 'ERROR'}</li>)}</ol>
-        <p>ALLOW on a legitimate call does not mean an attack was blocked. Inspect the graph for observed paths and possible harm paths.</p></>}
-      <Link to={`/graph?session=${encodeURIComponent(session)}`}>Open this session's graph →</Link>
-      {' · '}
-      <Link to="/findings">Open findings →</Link>
-    </section>}
+        {answer && <div className="demo-answer"><h3>Agent answer</h3><p>{answer}</p></div>}
+        {report.calls.length > 0 && <div><h3>Tool calls</h3><ol className="demo-calls">
+          {report.calls.map((call, index) => <li key={`${call.tool}-${index}`}>
+            <span>{call.tool}</span><strong data-verdict={call.verdict}>{call.verdict ?? 'ERROR'}</strong>
+          </li>)}</ol></div>}
+        <details className="demo-settings"><summary>Run details</summary>
+          <p className="demo-note">{report.provider ?? provider} · {report.model ?? 'Provider default'} · {report.policy ?? policy}</p>
+          <p className="demo-note">{report.outcome} · {report.halted_reason}</p>
+          <p className="demo-note mono">{session}</p>
+        </details>
+      </>}
+      <div className="demo-result-links">
+        <Link to={`/graph?session=${encodeURIComponent(session)}`}>Open this session's graph →</Link>
+        <Link to="/findings">Open findings →</Link>
+      </div>
+      {!busy && <button className="demo-reset" onClick={() => { setTask(''); setSession(''); setStatus(''); setReport(null); setAnswer(''); setPending([]); setError(''); setParams({}); }}>Start another run</button>}
+      </>}
+    </section>
+    </div>
   </div>;
 }
