@@ -71,6 +71,23 @@ Before making general claims in the paper, obtain independent label review
 and test genuinely new workflow shapes on a fresh frozen set. Keep the
 earlier benign model runs as a separate utility experiment.
 
+## Embedding evaluation before changing defaults
+
+- [ ] Run `heuristic` and `full` on the same frozen replay cases and graph
+  policies. Include independently labeled paraphrases, benign quotes, and
+  cases with suspicious signals across outputs. Keep the existing heuristic
+  report as the reference and record the mode, model revision, and dependency
+  versions with each new result.
+- [ ] Compare missed signals, false alerts, path and policy decisions, and
+  latency. Measure first-run model loading separately from warm inference.
+  Check the same configuration on controlled live demo runs.
+- [ ] If embeddings recover meaningful misses without an unacceptable
+  increase in false alerts or latency, make `full` the default for live
+  analysis and add it as a labeled benchmark mode. Keep `heuristic`
+  selectable for comparison and environments without the model. Otherwise,
+  leave embeddings optional and document the tradeoffs. Include the
+  comparison in the paper.
+
 ## Final delivery
 
 Deliver the paper draft, methods, tables, versioned inputs, and repeatable instructions. Check each paper claim against the evaluation artifacts and complete a clean-checkout reproduction pass.
